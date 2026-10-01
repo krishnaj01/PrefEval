@@ -1,317 +1,137 @@
-#!/usr/bin/env python3
 """
-run_experiments.py
-==================
-Master runner for the PrefEval project grid.
+utils/checkpoint.py
+-------------------
+Atomic checkpoint helpers for the PrefEval master runner.
 
-Tracks every (model × topic × task × inter_turns × pref_form) experiment
-in  benchmark_results/run_state.json  and can resume from any crash.
+Design: all state is kept in a single JSON file at <benchmark_results>/run_state.json.
+Writes are atomic (write temp -> rename) so a crash mid-write never corrupts the file.
 
-Usage
------
-# Fresh run:
-python run_experiments.py
-
-# Resume after a crash / interruption:
-python run_experiments.py --resume
-
-# Retry only failed experiments (leaves done ones untouched):
-python run_experiments.py --resume --retry-failed
-
-# Dry-run: print what would run without running anything:
-python run_experiments.py --dry-run
-
-# Show current progress only:
-python run_experiments.py --status
-
-# Override topics / tasks / turns inline (space-separated):
-python run_experiments.py --resume \\
-    --topics travel_restaurant lifestyle_dietary \\
-    --tasks zero-shot remind \\
-    --turns 2 10
+State file schema:
+{
+    "meta": {
+        "created_at": "<ISO timestamp>",
+        "last_updated": "<ISO timestamp>",
+        "config": { ... }
+    },
+    "experiments": {
+        "<exp_key>": {
+            "status": "pending" | "running" | "done" | "failed",
+            "started_at": "<ISO timestamp>" | null,
+            "finished_at": "<ISO timestamp>" | null,
+            "error": "<str>" | null
+        }
+    }
+}
 """
 
-import argparse
+import json
 import os
-import subprocess
-import sys
-import textwrap
-
-# ── locate repo root (this file lives in <repo_root>/) ────────────────────────
-REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, REPO_ROOT)
-
-from utils.checkpoint import (
-    init_state,
-    is_done,
-    load_state,
-    make_exp_key,
-    mark_done,
-    mark_failed,
-    mark_running,
-    print_progress,
-    save_state,
-)
-
-# ══════════════════════════════════════════════════════════════════════════════
-# Experiment Grid  —  edit these to match your project scope
-# ══════════════════════════════════════════════════════════════════════════════
-
-DEFAULT_MODEL = "llama8b-local"
-
-DEFAULT_TOPICS = [
-    "travel_restaurant",
-    "lifestyle_dietary",
-    "entertain_shows",
-    "shop_technology",
-    "education_learning_styles",
-    "lifestyle_health",
-]
-
-DEFAULT_TASKS = ["zero-shot", "remind", "cot", "selfcritic", "rag"]
-# NOTE: "proposed" will be added once your pipeline module is ready.
-
-DEFAULT_TURNS = [2, 10, 20]   # 70 removed: exceeds RTX 3060 KV-cache budget.
-                               # Add 50 here if you want to attempt the stretch run.
-
-DEFAULT_PREF_FORMS = ["explicit", "implicit"]
-DEFAULT_PREF_TYPE  = "choice"   # for implicit form; persona-driven is optional
-
-STATE_FILE = os.path.join(REPO_ROOT, "benchmark_results", "run_state.json")
-
-# ══════════════════════════════════════════════════════════════════════════════
-# Helpers
-# ══════════════════════════════════════════════════════════════════════════════
-
-def build_experiment_list(model, topics, tasks, turns_list, pref_forms, pref_type):
-    """Return an ordered list of experiment dicts for the given grid."""
-    experiments = []
-    for topic in topics:
-        for pref_form in pref_forms:
-            for inter_turns in turns_list:
-                for task in tasks:
-                    pt = pref_type if pref_form == "implicit" else ""
-                    experiments.append(
-                        dict(
-                            model=model,
-                            topic=topic,
-                            task=task,
-                            inter_turns=inter_turns,
-                            pref_form=pref_form,
-                            pref_type=pt,
-                            key=make_exp_key(model, topic, task, inter_turns, pref_form, pt),
-                        )
-                    )
-    return experiments
+import tempfile
+from datetime import datetime, timezone
 
 
-def run_one(exp: dict, args) -> None:
-    """
-    Run one experiment: call benchmark_classification.py,
-    then get_preference_following_accuracy.py.
-
-    Raises subprocess.CalledProcessError on failure.
-    """
-    model       = exp["model"]
-    topic       = exp["topic"]
-    task        = exp["task"]
-    inter_turns = exp["inter_turns"]
-    pref_form   = exp["pref_form"]
-    pref_type   = exp["pref_type"]
-
-    base_cmd = [
-        sys.executable,
-        os.path.join(REPO_ROOT, "classification_task", "benchmark_classification.py"),
-        f"--model={model}",
-        f"--topic={topic}",
-        f"--task={task}",
-        f"--inter_turns={inter_turns}",
-        f"--pref_form={pref_form}",
-    ]
-    if pref_form == "implicit":
-        base_cmd.append(f"--pref_type={pref_type}")
-
-    # --- Step 1: generate responses ---
-    print(f"\n  [1/2] Generating: {exp['key']}")
-    subprocess.run(base_cmd, check=True, cwd=os.path.join(REPO_ROOT, "example_scripts"))
-
-    # --- Step 2: compute accuracy ---
-    acc_task = "rag_5" if task == "rag" else task
-    acc_cmd = [
-        sys.executable,
-        os.path.join(REPO_ROOT, "generation_task",
-                     "get_preference_following_accuracy_generation_task.py"),
-        f"--model={model}",
-        f"--topic={topic}",
-        f"--task={acc_task}",
-        f"--inter_turn={inter_turns}",
-        f"--pref_form={pref_form}",
-    ]
-    if pref_form == "implicit":
-        acc_cmd.append(f"--pref_type={pref_type}")
-
-    print(f"  [2/2] Scoring:    {exp['key']}")
-    subprocess.run(acc_cmd, check=True, cwd=os.path.join(REPO_ROOT, "example_scripts"))
+def make_exp_key(model, topic, task, inter_turns, pref_form, pref_type=""):
+    """Return a deterministic string key for one experiment configuration."""
+    parts = [model, topic, task, f"{inter_turns}turns", pref_form]
+    if pref_type:
+        parts.append(pref_type)
+    return "__".join(parts)
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# Main
-# ══════════════════════════════════════════════════════════════════════════════
+def _now():
+    return datetime.now(timezone.utc).isoformat()
 
-def main():
-    parser = argparse.ArgumentParser(
-        description="PrefEval master runner with checkpoint/resume support.",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=textwrap.dedent("""\
-            Examples:
-              python run_experiments.py                         # fresh run
-              python run_experiments.py --resume                # skip done experiments
-              python run_experiments.py --resume --retry-failed # also retry failed ones
-              python run_experiments.py --status                # show progress, exit
-              python run_experiments.py --dry-run               # show plan, don't run
-        """),
-    )
-    parser.add_argument("--resume",       action="store_true",
-                        help="Skip experiments already marked 'done' in run_state.json.")
-    parser.add_argument("--retry-failed", action="store_true",
-                        help="Re-run experiments marked 'failed' (implies --resume).")
-    parser.add_argument("--dry-run",      action="store_true",
-                        help="Print what would run without actually running anything.")
-    parser.add_argument("--status",       action="store_true",
-                        help="Print current progress from run_state.json and exit.")
 
-    # Grid overrides
-    parser.add_argument("--model",   default=DEFAULT_MODEL)
-    parser.add_argument("--topics",  nargs="+", default=DEFAULT_TOPICS)
-    parser.add_argument("--tasks",   nargs="+", default=DEFAULT_TASKS)
-    parser.add_argument("--turns",   nargs="+", type=int, default=DEFAULT_TURNS)
-    parser.add_argument("--pref-forms", nargs="+", default=DEFAULT_PREF_FORMS,
-                        dest="pref_forms")
-    parser.add_argument("--pref-type",  default=DEFAULT_PREF_TYPE, dest="pref_type")
-
-    args = parser.parse_args()
-
-    # ── status-only mode ──────────────────────────────────────────────────────
-    if args.status:
-        state = load_state(STATE_FILE)
-        if not state["experiments"]:
-            print("No run_state.json found (or it is empty). Nothing has been run yet.")
-        else:
-            print(f"\nState file: {STATE_FILE}")
-            print_progress(state)
-            # Show per-experiment table
-            print("\n  Experiment status:")
-            max_klen = max(len(k) for k in state["experiments"])
-            for k, v in state["experiments"].items():
-                icon = {"done": "✅", "pending": "⏳", "running": "🔄",
-                        "failed": "❌"}.get(v["status"], "?")
-                print(f"    {icon}  {k:<{max_klen}}   {v['status']}")
-        return
-
-    # ── build experiment list ─────────────────────────────────────────────────
-    experiments = build_experiment_list(
-        args.model, args.topics, args.tasks, args.turns,
-        args.pref_forms, args.pref_type,
-    )
-    keys = [e["key"] for e in experiments]
-
-    grid_config = dict(
-        model=args.model, topics=args.topics, tasks=args.tasks,
-        turns=args.turns, pref_forms=args.pref_forms, pref_type=args.pref_type,
-    )
-
-    # ── initialise / merge state ──────────────────────────────────────────────
-    state = init_state(STATE_FILE, keys, grid_config)
-
-    # If --retry-failed, reset failed experiments back to pending
-    if args.retry_failed:
-        for key in keys:
-            if state["experiments"][key]["status"] == "failed":
-                state["experiments"][key] = {
-                    "status": "pending",
-                    "started_at": None,
-                    "finished_at": None,
-                    "error": None,
-                }
-        save_state(STATE_FILE, state)
-        print("  Reset failed experiments → pending.")
-
-    # ── print plan ────────────────────────────────────────────────────────────
-    total    = len(experiments)
-    to_run   = [e for e in experiments
-                if not ((args.resume or args.retry_failed) and is_done(state, e["key"]))]
-    skipped  = total - len(to_run)
-
-    print(f"\n{'='*60}")
-    print(f"  PrefEval Master Runner")
-    print(f"{'='*60}")
-    print(f"  Total experiments : {total}")
-    print(f"  Will skip (done)  : {skipped}")
-    print(f"  Will run          : {len(to_run)}")
-    print(f"  State file        : {STATE_FILE}")
-    print(f"{'='*60}\n")
-    print_progress(state)
-    print()
-
-    if args.dry_run:
-        print("  [DRY RUN] Experiments that would run:")
-        for e in to_run:
-            print(f"    {e['key']}")
-        return
-
-    if not to_run:
-        print("  Nothing to run — all experiments are already done!")
-        print("  Use --retry-failed to re-run failed ones, or edit the grid.")
-        return
-
-    # ── run loop ──────────────────────────────────────────────────────────────
-    done_count = skipped
-    fail_count = sum(
-        1 for e in experiments
-        if state["experiments"][e["key"]]["status"] == "failed"
-    )
-
-    for i, exp in enumerate(to_run, 1):
-        key = exp["key"]
-
-        if (args.resume or args.retry_failed) and is_done(state, key):
-            continue  # extra safety guard
-
-        print(f"\n[{i}/{len(to_run)}] Starting: {key}")
-        mark_running(STATE_FILE, state, key)
-
+def _atomic_write(path, data):
+    """Write data to path atomically via temp-file + rename."""
+    dir_ = os.path.dirname(os.path.abspath(path))
+    os.makedirs(dir_, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=dir_, suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w") as f:
+            json.dump(data, f, indent=2)
+        os.replace(tmp, path)   # atomic on POSIX
+    except Exception:
         try:
-            run_one(exp, args)
-            mark_done(STATE_FILE, state, key)
-            done_count += 1
-            print(f"  ✅ Done: {key}")
-        except subprocess.CalledProcessError as exc:
-            err = f"subprocess exited with code {exc.returncode}"
-            mark_failed(STATE_FILE, state, key, err)
-            fail_count += 1
-            print(f"  ❌ Failed: {key}  ({err})")
-            print(f"     To retry: python run_experiments.py --resume --retry-failed")
-        except Exception as exc:
-            err = str(exc)
-            mark_failed(STATE_FILE, state, key, err)
-            fail_count += 1
-            print(f"  ❌ Failed: {key}  ({err})")
-
-        # Print running progress after every experiment
-        print()
-        print_progress(state)
-
-    # ── final summary ─────────────────────────────────────────────────────────
-    print(f"\n{'='*60}")
-    print("  Run complete.")
-    print_progress(state)
-    print(f"  State saved to: {STATE_FILE}")
-    if fail_count:
-        print(f"\n  Re-run failed experiments with:")
-        print(f"    python run_experiments.py --resume --retry-failed")
-    print(f"{'='*60}\n")
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
 
 
-if __name__ == "__main__":
-    main()
+def load_state(state_path):
+    """Load state JSON. Returns empty scaffold if file does not exist."""
+    if os.path.exists(state_path):
+        with open(state_path, "r") as f:
+            return json.load(f)
+    return {
+        "meta": {"created_at": _now(), "last_updated": _now(), "config": {}},
+        "experiments": {},
+    }
+
+
+def save_state(state_path, state):
+    """Atomically persist state to state_path."""
+    state["meta"]["last_updated"] = _now()
+    _atomic_write(state_path, state)
+
+
+def init_state(state_path, experiment_keys, config):
+    """
+    Initialise state file with experiment_keys set to 'pending'.
+    Existing entries are left untouched (safe for --resume).
+    Returns the merged state dict.
+    """
+    state = load_state(state_path)
+    state["meta"]["config"] = config
+    for key in experiment_keys:
+        if key not in state["experiments"]:
+            state["experiments"][key] = {
+                "status": "pending",
+                "started_at": None,
+                "finished_at": None,
+                "error": None,
+            }
+    save_state(state_path, state)
+    return state
+
+
+def mark_running(state_path, state, key):
+    state["experiments"][key]["status"] = "running"
+    state["experiments"][key]["started_at"] = _now()
+    save_state(state_path, state)
+
+
+def mark_done(state_path, state, key):
+    state["experiments"][key]["status"] = "done"
+    state["experiments"][key]["finished_at"] = _now()
+    save_state(state_path, state)
+
+
+def mark_failed(state_path, state, key, error):
+    state["experiments"][key]["status"] = "failed"
+    state["experiments"][key]["finished_at"] = _now()
+    state["experiments"][key]["error"] = error
+    save_state(state_path, state)
+
+
+def is_done(state, key):
+    return state["experiments"].get(key, {}).get("status") == "done"
+
+
+def print_progress(state):
+    exps = state["experiments"]
+    counts = {"done": 0, "running": 0, "failed": 0, "pending": 0}
+    for v in exps.values():
+        counts[v["status"]] = counts.get(v["status"], 0) + 1
+    total = len(exps)
+    print(
+        f"  Progress: {counts['done']}/{total} done  |  "
+        f"{counts['pending']} pending  |  "
+        f"{counts['failed']} failed  |  "
+        f"{counts['running']} running"
+    )
+    if counts["failed"]:
+        failed = [k for k, v in exps.items() if v["status"] == "failed"]
+        print(f"  Failed: {failed}")
 

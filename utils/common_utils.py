@@ -2,15 +2,21 @@ import os
 import json
 import time
 import yaml
-import tiktoken
-from openai import OpenAI
-from google import genai
-from google.genai import types
+from openai import OpenAI  # required: installed as a vLLM dependency
+
+# google-genai and tiktoken are OPTIONAL — only needed if you use Gemini / token counting.
+# Imported lazily inside the functions that need them so the module loads fine
+# on machines where these packages are not installed (e.g. the remote GPU machine).
 
 
 def count_tokens(text):
-    encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")  # Using a default model
-    return len(encoding.encode(text))
+    try:
+        import tiktoken
+        encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
+        return len(encoding.encode(text))
+    except ImportError:
+        # Fallback: rough approximation (1 token ≈ 0.75 words)
+        return int(len(text.split()) / 0.75)
 
 
 def check_file_exists(save_file, total_len):
@@ -100,11 +106,11 @@ def generate_message(
                 )
                 return completion.choices[0].message.content
             elif model_type == "gemini":
-                client = genai.Client(api_key=os.getenv("GENAI_API_KEY"))
-                config = types.GenerateContentConfig(
+                from google import genai as _genai
+                from google.genai import types as _types
+                client = _genai.Client(api_key=os.getenv("GENAI_API_KEY"))
+                config = _types.GenerateContentConfig(
                     system_instruction=messages["system_instruction"],
-                    # max_output_tokens=max_tokens,
-                    # temperature=temperature,
                 )
                 response = client.models.generate_content(
                     model=model_id,
