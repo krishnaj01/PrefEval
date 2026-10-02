@@ -113,7 +113,7 @@ def create_user_pref_message(preference, model_type, system_prompt):
 """
     elif model_type == "mistral":
         user_message = f"<s>[INST]{system_prompt} {preference} [/INST]"
-    elif model_type == "gpt":
+    elif model_type in ("gpt", "local_vllm"):
         user_message = {"role": "user", "content": str(preference)}
         system_prompt = {
             "role": "system",
@@ -194,7 +194,7 @@ def get_question_prompt(
 {question}
 [/INST]"""
 
-    elif model_type == "gpt":
+    elif model_type in ("gpt", "local_vllm"):
         user_message = {"role": "user", "content": preference}
         system_prompt = {"role": "system", "content": system_prompt}
         messages = [
@@ -438,7 +438,7 @@ def get_question_prompt_rag(
 [INST]
 {question}
 [/INST]"""
-    elif model_type == "gpt":
+    elif model_type in ("gpt", "local_vllm"):
         user_message = {"role": "user", "content": preference}
         system_prompt = {"role": "system", "content": system_prompt}
         messages = [

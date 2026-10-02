@@ -583,7 +583,7 @@ def get_self_critic_prompt_critic_mcq_implicit(
 ):
     mcq_question_format = get_mcq_question_format(options)
     question = question + mcq_question_format
-    if "claude" in args.model:
+    if "claude" in args.model or "local" in args.model:
         critic_messages = conversation_messages
         if args.inter_turns > 0:
             critic_messages.extend(multi_inter_message)
@@ -729,7 +729,7 @@ def get_self_critic_prompt_response_mcq_implicit(
     mcq_question_format = get_mcq_question_format(options)
     question = question + mcq_question_format
     revision_request += mcq_question_format
-    if "claude" in args.model:
+    if "claude" in args.model or "local" in args.model:
 
         critic_messages = conversation_messages
         if args.inter_turns > 0:
@@ -743,7 +743,8 @@ def get_self_critic_prompt_response_mcq_implicit(
         critic_messages.append({"role": "user", "content": critic_request})
         critic_messages.append({"role": "assistant", "content": critic})
         critic_messages.append({"role": "user", "content": revision_request})
-        critic_messages.append({"role": "assistant", "content": "<choice>"})
+        if "claude" in args.model:  # prefill only for Claude
+            critic_messages.append({"role": "assistant", "content": "<choice>"})
     elif "llama" in args.model:
         if args.inter_turns == 0:
             multi_inter_message = ""
@@ -923,6 +924,12 @@ def get_implicit_question_prompt_rag_mcq(
 [/INST]
 <choice>
 """
+    elif model_type == "local_vllm":
+        messages = list(conversation_messages)
+        if multi_inter_message:
+            assert turn_number > 0
+            messages.extend(multi_inter_message)
+        messages.append({"role": "user", "content": question})
     elif model_type == "gpt":
         system_prompt = {"role": "system", "content": system_prompt}
         messages = [system_prompt, conversation_messages]

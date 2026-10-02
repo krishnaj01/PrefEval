@@ -237,6 +237,31 @@ def generate_message(
                 response_text = model_response["generation"]
                 return response_text
 
+            elif model_type == "local_vllm":
+                from openai import OpenAI
+                vllm_base_url = os.environ.get("VLLM_BASE_URL", "http://localhost:8001/v1")
+                oai_client = OpenAI(base_url=vllm_base_url, api_key="not-needed")
+                # messages here is already a list of {"role":..., "content":...} dicts
+                if system_prompt and isinstance(messages, list):
+                    if messages and messages[0].get("role") == "system":
+                        full_messages = messages  # prompt builder already added the system message
+                    else:
+                        full_messages = [{"role": "system", "content": system_prompt}] + messages
+                elif system_prompt and isinstance(messages, str):
+                    full_messages = [{"role": "system", "content": system_prompt},
+                                     {"role": "user", "content": messages}]
+                elif isinstance(messages, str):
+                    full_messages = [{"role": "user", "content": messages}]
+                else:
+                    full_messages = messages
+                completion = oai_client.chat.completions.create(
+                    model=model_id,
+                    messages=full_messages,
+                    max_tokens=max_tokens or 512,
+                    temperature=temperature,
+                )
+                return completion.choices[0].message.content
+
             else:
                 raise ValueError(f"Invalid model_type: {model_type}")
 
@@ -257,7 +282,7 @@ def extract_multi_turn_conversation(multi_turn_message, turn_number=3, model_typ
     for turn in multi_turn_message:
         role = turn["role"]
         content = turn["content"]
-        if model_type == "llama":
+        if model_type in ("llama", "bedrock_llama"):
             message.append(f"<|start_header_id|>{role}<|end_header_id|>\n{content}<|eot_id|>")
         elif model_type == "claude":
             message.append({"role": role, "content": content})
@@ -266,14 +291,14 @@ def extract_multi_turn_conversation(multi_turn_message, turn_number=3, model_typ
                 message.append(f"[INST] {content} [/INST]")
             else:
                 message.append(f"{content}</s>")
-        elif model_type == "gpt":
+        elif model_type in ("gpt", "local_vllm"):
             message.append({"role": role, "content": content})
         if len(message) == turn_number * 2:
             if role != "assistant":
                 raise ValueError("The last turn must be from assistant")
             break
     assert len(message) == turn_number * 2, "The number of turns is less than the specified number"
-    if "llama" in model_type or "mistral" in model_type:
+    if ("llama" in model_type or "mistral" in model_type) and isinstance(message[0], str):
         message = "".join(message)
     return message
 
@@ -295,7 +320,7 @@ def extract_conversation_to_messages(conversation, model_type):
                 messages.append(f"{content}</s>")
         elif model_type == "llama":
             messages.append(f"<|start_header_id|>{role}<|end_header_id|>\n{content}<|eot_id|>")
-        elif model_type == "claude":
+        elif model_type in ("claude", "local_vllm", "gpt"):
             messages.append({"role": role, "content": content})
         else:
             raise ValueError(f"Invalid model_type: {model_type}")
@@ -332,11 +357,17 @@ def get_model_info(model_name):
         model_id = "mistral.mistral-large-2402-v1:0"
     elif model_name == "mistrallarge2":
         model_id = "mistral.mistral-large-2407-v1:0"
+    elif model_name == "llama8b-local":
+        model_id = "hugging-quants/Meta-Llama-3.1-8B-Instruct-AWQ-INT4"
 
     model_type = (
-        "mistral"
-        if "mistral" in model_name
-        else ("claude" if "claude" in model_name else "llama" if "llama" in model_name else None)
+        "local_vllm"
+        if "local" in model_name
+        else (
+            "mistral"
+            if "mistral" in model_name
+            else ("claude" if "claude" in model_name else "llama" if "llama" in model_name else None)
+        )
     )
     return model_id, model_type
 
@@ -416,7 +447,7 @@ def get_question_prompt_mcq(
 [/INST]
 <choice>
 """
-    elif model_type == "gpt":
+    elif model_type in ("gpt", "local_vllm"):
         user_message = {"role": "user", "content": preference}
         system_prompt = {"role": "system", "content": system_prompt}
         messages = [
@@ -490,7 +521,7 @@ def get_question_prompt_mcq_rag(
 [/INST]
 <choice>
 """
-    elif model_type == "gpt":
+    elif model_type in ("gpt", "local_vllm"):
         user_message = {"role": "user", "content": preference}
         system_prompt = {"role": "system", "content": system_prompt}
         messages = [
@@ -521,7 +552,7 @@ def get_self_critic_prompt_critic_mcq(
 ):
     mcq_question_format = get_mcq_question_format(options)
     question = question + mcq_question_format
-    if "claude" in args.model:
+    if "claude" in args.model or "local" in args.model:
         critic_messages = [
             {"role": "user", "content": preference},
             {"role": "assistant", "content": pref_generation},
@@ -593,7 +624,7 @@ def get_self_critic_prompt_response_mcq(
     mcq_question_format = get_mcq_question_format(options)
     question = question + mcq_question_format
     revision_request += mcq_question_format
-    if "claude" in args.model:
+    if "claude" in args.model or "local" in args.model:
         critic_messages = [
             {"role": "user", "content": preference},
             {"role": "assistant", "content": pref_generation},
@@ -609,7 +640,8 @@ def get_self_critic_prompt_response_mcq(
         critic_messages.append({"role": "user", "content": critic_request})
         critic_messages.append({"role": "assistant", "content": critic})
         critic_messages.append({"role": "user", "content": revision_request})
-        critic_messages.append({"role": "assistant", "content": "<choice>"})
+        if "claude" in args.model:  # assistant prefill only for Claude; chat-completions can't prefill
+            critic_messages.append({"role": "assistant", "content": "<choice>"})
     elif "llama" in args.model:
         critic_messages = f"""<|begin_of_text|>
         <|start_header_id|>system<|end_header_id|>
@@ -684,6 +716,11 @@ def get_implicit_question_prompt_mcq(
             messages.extend(multi_inter_message)
         messages.append({"role": "user", "content": question})
         messages.append({"role": "assistant", "content": "<choice>"})
+    elif model_type == "local_vllm":
+        messages = list(conversation_messages)
+        if turn_number > 0:
+            messages.extend(multi_inter_message)
+        messages.append({"role": "user", "content": question})
     elif model_type == "llama":
         if turn_number == 0:
             multi_inter_message = ""

@@ -1,11 +1,18 @@
 import argparse
-import boto3
 import json
 import logging
 import os, sys
+import random
 import yaml
 from tqdm import tqdm
-from botocore.exceptions import ClientError
+
+# boto3/botocore are only needed for Bedrock models — imported lazily below
+try:
+    import boto3
+    from botocore.exceptions import ClientError
+    _BOTO3_AVAILABLE = True
+except Exception:
+    _BOTO3_AVAILABLE = False
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils.common_utils import generate_message, get_model_info, extract_multi_turn_message, load_config, count_tokens
@@ -101,8 +108,13 @@ def main():
             topic_data = existing_response_data
 
     try:
-        client = boto3.client(service_name="bedrock-runtime", region_name="us-east-1")
         model_id, model_type = get_model_info(args.model)
+
+        # Only create a Bedrock client for cloud models
+        if model_type == "local_vllm":
+            client = None  # generate_message in utils_mcq creates its own OpenAI client
+        else:
+            client = boto3.client(service_name="bedrock-runtime", region_name="us-east-1")
 
         # Extract inter multi-turn message
         multi_inter_message, multi_turn_message = extract_multi_turn_message(turns_data, args, model_type)

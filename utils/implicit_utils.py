@@ -119,7 +119,7 @@ def extract_conversation_to_messages(conversation, model_type):
                 messages.append(f"<|start_header_id|>user<|end_header_id|>\n{content}<|eot_id|>")
             else:
                 messages.append(f"<|start_header_id|>assistant<|end_header_id|>\n{content}<|eot_id|>")
-        elif model_type == "claude":
+        elif model_type in ("claude", "local_vllm"):
             if key == "query" or key == "user_selection":
                 messages.append({"role": "user", "content": content})
             else:
@@ -139,7 +139,7 @@ def extract_conversation_to_msg_persona(conversation, model_type):
                     messages.append(f"[INST] {content} [/INST]")
                 elif role == "assistant":
                     messages.append(f"{content}</s>")
-            elif model_type == "claude":
+            elif model_type in ("claude", "local_vllm"):
                 if role == "user":
                     messages.append({"role": "user", "content": content})
                 else:

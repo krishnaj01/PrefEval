@@ -135,23 +135,40 @@ def run_one(exp: dict, args) -> None:
     print(f"\n  [1/2] Generating: {exp['key']}")
     subprocess.run(base_cmd, check=True, cwd=os.path.join(REPO_ROOT, "example_scripts"))
 
-    # --- Step 2: compute accuracy ---
-    acc_task = "rag_5" if task == "rag" else task
-    acc_cmd = [
-        sys.executable,
-        os.path.join(REPO_ROOT, "generation_task",
-                     "get_preference_following_accuracy_generation_task.py"),
-        f"--model={model}",
-        f"--topic={topic}",
-        f"--task={acc_task}",
-        f"--inter_turn={inter_turns}",
-        f"--pref_form={pref_form}",
-    ]
-    if pref_form == "implicit":
-        acc_cmd.append(f"--pref_type={pref_type}")
-
+    # --- Step 2: score the MCQ results ---
+    # (The old step 2 called the generation-task LLM-judge scorer, which needs
+    #  error_*.json files that the MCQ pipeline never creates.)
     print(f"  [2/2] Scoring:    {exp['key']}")
-    subprocess.run(acc_cmd, check=True, cwd=os.path.join(REPO_ROOT, "example_scripts"))
+    score_mcq_result(exp)
+
+
+def score_mcq_result(exp: dict) -> None:
+    """Compute MCQ accuracy straight from the saved results JSON."""
+    import json
+    task = "rag_5" if exp["task"] == "rag" else exp["task"]
+    fname = f"{exp['model']}_{exp['topic']}_{exp['inter_turns']}interturn.json"
+    base = os.path.join(REPO_ROOT, "benchmark_results", exp["pref_form"])
+    if exp["pref_form"] == "implicit":
+        pt = exp["pref_type"]
+        candidates = [
+            os.path.join(base, pt, "mcq_results", task, exp["topic"], fname),
+            os.path.join(base, pt, "generation_results", task, exp["topic"], fname),  # implicit RAG saves here
+        ]
+    else:
+        candidates = [os.path.join(base, "mcq_results", task, exp["topic"], fname)]
+    path = next((c for c in candidates if os.path.isfile(c)), None)
+    if path is None:
+        raise FileNotFoundError("No results file found. Looked in:\n  " + "\n  ".join(candidates))
+    with open(path) as f:
+        data = json.load(f)
+    done = [d for d in data if "choice" in d]
+    correct = sum(1 for d in done if d["choice"] == d.get("correct_idx"))
+    none_ct = sum(1 for d in done if d["choice"] is None)
+    acc = 100 * correct / len(done) if done else 0.0
+    print(f"     Accuracy: {acc:.2f}%  ({correct}/{len(done)} answered of {len(data)} items; "
+          f"{none_ct} unparseable)  -> {path}")
+    if len(done) < len(data):
+        raise RuntimeError(f"Only {len(done)}/{len(data)} items have a 'choice' (generation incomplete).")
 
 
 # ══════════════════════════════════════════════════════════════════════════════

@@ -147,7 +147,7 @@ def extract_multi_turn_conversation(multi_turn_message, turn_number=3, model_typ
                 message.append(f"[INST] {content} [/INST]")
             else:
                 message.append(f"{content}</s>")
-        elif model_type == "gpt":
+        elif model_type in ("gpt", "local_vllm"):
             message.append({"role": role, "content": content})
         elif model_type == "gemini":
             gemini_role = {"user": "user", "assistant": "model"}.get(role, "user")

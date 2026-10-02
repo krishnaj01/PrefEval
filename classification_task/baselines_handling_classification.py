@@ -16,7 +16,6 @@ from utils.mcq_implicit_utils import (
     get_self_critic_prompt_response_mcq_implicit,
     get_self_critic_prompt_critic_mcq_implicit,
 )
-from utils.common_utils import generate_message
 
 
 def load_turns_data(args):
