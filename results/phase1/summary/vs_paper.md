@@ -8,31 +8,13 @@ Backend revision: 2. Paper: Zhao et al., ICLR 2025, Fig. 6.
 
 | Method | Context (inter_turns) | Ours | Paper | Δ (ours − paper) | Topics | Questions | Parse-fail % | Truncated |
 |---|---|---|---|---|---|---|---|---|
-| Zero-shot | 0.2k (0) | 94.6 | 85 | +9.6 | 8/20 ⚠ partial | 411 | 0.0 | 0 |
-| Zero-shot | 1k (3) | 50.2 | 55 | -4.8 | 8/20 ⚠ partial | 411 | 0.0 | 0 |
-| Zero-shot | 3k (8) | 39.6 | 42 | -2.4 | 8/20 ⚠ partial | 411 | 0.0 | 0 |
-| Reminder | 0.2k (0) | 97.2 | 94 | +3.2 | 8/20 ⚠ partial | 411 | 0.0 | 0 |
-| Reminder | 1k (3) | 75.4 | 80 | -4.6 | 8/20 ⚠ partial | 411 | 0.0 | 0 |
-| Reminder | 3k (8) | 57.1 | 59 | -1.9 | 8/20 ⚠ partial | 411 | 0.0 | 0 |
-| CoT | 0.2k (0) | 80.0 | 83 | -3.0 | 1/20 ⚠ partial | 5 | 0.0 | 0 |
-| CoT | 3k (8) | 60.0 | 50 | +10.0 | 1/20 ⚠ partial | 5 | 0.0 | 0 |
-| Self-Critic | 0.2k (0) | 80.0 | 79 | +1.0 | 1/20 ⚠ partial | 5 | 0.0 | 0 |
-| Self-Critic | 3k (8) | 60.0 | 62 | -2.0 | 1/20 ⚠ partial | 5 | 0.0 | 0 |
-| RAG (top-5) | 1k (3) | 88.5 | 87 | +1.5 | 8/19 ⚠ partial† | 411 | 6.6 | 0 |
-| RAG (top-5) | 3k (8) | 77.6 | 80 | -2.4 | 8/19 ⚠ partial† | 411 | 16.5 | 0 |
+| Zero-shot | 0.2k (0) | 94.2 | 85 | +9.2 | 20/20 | 1000 | 0.0 | 0 |
+| Zero-shot | 1k (3) | 52.7 | 55 | -2.3 | 20/20 | 1000 | 0.0 | 0 |
+| Zero-shot | 3k (8) | 43.3 | 42 | +1.3 | 20/20 | 1000 | 0.1 | 0 |
+| Reminder | 0.2k (0) | 97.4 | 94 | +3.4 | 20/20 | 1000 | 0.0 | 0 |
+| Reminder | 1k (3) | 78.0 | 80 | -2.0 | 20/20 | 1000 | 0.0 | 0 |
+| Reminder | 3k (8) | 59.4 | 59 | +0.4 | 20/20 | 1000 | 0.1 | 0 |
+| RAG (top-5) | 1k (3) | 88.6 | 87 | +1.6 | 19/19† | 949 | 5.9 | 0 |
+| RAG (top-5) | 3k (8) | 74.8 | 80 | -5.2 | 19/19† | 949 | 19.1 | 0 |
 † RAG excludes entertain_games: the upstream precomputed SimCSE retrieval file is truncated (only 4/51 questions parse), so RAG is averaged over the remaining topics.
-
-## llama3-8b | implicit-choice
-
-| Method | Context (inter_turns) | Ours | Paper | Δ (ours − paper) | Topics | Questions | Parse-fail % | Truncated |
-|---|---|---|---|---|---|---|---|---|
-| Zero-shot | 0.2k (0) | 60.0 | – | – | 1/20 ⚠ partial | 5 | 0.0 | 0 |
-| Zero-shot | 3k (8) | 40.0 | – | – | 1/20 ⚠ partial | 5 | 0.0 | 0 |
-| Reminder | 0.2k (0) | 80.0 | – | – | 1/20 ⚠ partial | 5 | 0.0 | 0 |
-| Reminder | 3k (8) | 40.0 | – | – | 1/20 ⚠ partial | 5 | 0.0 | 0 |
-| CoT | 0.2k (0) | 60.0 | – | – | 1/20 ⚠ partial | 5 | 0.0 | 0 |
-| CoT | 3k (8) | 20.0 | – | – | 1/20 ⚠ partial | 5 | 0.0 | 0 |
-| Self-Critic | 0.2k (0) | 80.0 | – | – | 1/20 ⚠ partial | 5 | 0.0 | 0 |
-| Self-Critic | 3k (8) | 20.0 | – | – | 1/20 ⚠ partial | 5 | 0.0 | 0 |
-| RAG (top-5) | 3k (8) | 60.0 | – | – | 1/20 ⚠ partial | 5 | 0.0 | 0 |
 
