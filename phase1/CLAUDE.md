@@ -1,0 +1,18 @@
+# phase1/: local PrefEval classification baselines
+
+- `upstream/` holds **verbatim** copies of upstream prompt code from commit 5079505. Only import lines are edited
+  (marked `[phase1 edit]`). Never change prompt text or formatting here. If a prompt needs normalising, do it in
+  `backend.py` and bump `BACKEND_REV`.
+- `backend.py` contains `OllamaBackend`, which calls `/api/generate` with `raw=true`. It strips the leading literal `<|begin_of_text|>`
+  (Ollama adds BOS itself) and trims trailing spaces and tabs. Without the trim, upstream's Llama self-critic templates end in whitespace
+  and the model returns empty output. In Ollama 0.34, `prompt_eval_count` already includes cached tokens.
+- `BACKEND_REV` is stored in every result record. `runner.read_done` and `aggregate` ignore other revisions.
+  **Bump it whenever decoding or prompt normalisation changes**, otherwise old and new results get mixed.
+- `runner.py` runs cells in the order topic → form → inter_turns → method. The resume key is `task_id` within a cell file.
+  The self-critic handlers call the module-global `upstream.baselines_handling_classification.generate_message`, which
+  `cmd_run` monkey-patches to the backend adapter.
+- RAG at inter_turns=0 is skipped, because the upstream assert needs at least 5 exchanges.
+- Option shuffle: `random.Random(f"{seed}:{topic}:{task_id}")`, where `options[0]` is the correct answer in the dataset.
+- Only `run` may rewrite (repair) result files. `status` must stay read-only, because it runs alongside live jobs.
+- The metric is upstream `extract_choice` (strict). `choice_lenient` is a diagnostic only.
+- Verify changes with `python -m phase1.runner show-prompt ...` and `configs/phase1/smoke.yaml` (about 2 min).

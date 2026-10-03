@@ -1,0 +1,8 @@
+# Tier A, Stage 2: all 20 topics (pilot cells are skipped automatically). Paper Fig. 6 Llama3-8B column: Zero-shot / Reminder / RAG.
+# inter_turns 0/3/8 == paper's 0.2k/1k/3k-token rows (paper "turns" = inter_turns + 2).
+name: tierA
+model: llama3-8b
+forms: [explicit]
+methods: [zero-shot, remind, rag]
+inter_turns: [0, 3, 8]
+topics: all

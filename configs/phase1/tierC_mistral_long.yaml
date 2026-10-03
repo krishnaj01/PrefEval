@@ -1,0 +1,8 @@
+# OPTIONAL Tier C: Mistral-7B-v0.2 incl. the long regime (28/48/68 inter turns = paper's 10k/16k/23k rows).
+# Requires: ollama pull mistral:7b-instruct-v0.2-q8_0  (~7.7 GB). Long prompts -> 15-40 s/question.
+name: tierC_mistral_long
+model: mistral7b
+forms: [explicit]
+methods: [zero-shot, remind, rag]
+inter_turns: [0, 3, 8, 28, 48, 68]
+topics: [travel_restaurant, lifestyle_dietary, entertain_shows]

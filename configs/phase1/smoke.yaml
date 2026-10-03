@@ -1,0 +1,9 @@
+# Smoke test (~5-10 min): every code path once, 5 questions per cell. Results land in the same
+# results tree, so they are reused (not recomputed) by the real tiers.
+name: smoke
+model: llama3-8b
+forms: [explicit, implicit-choice]
+methods: [zero-shot, remind, cot, selfcritic, rag]
+inter_turns: [0, 8]
+topics: [travel_restaurant]
+limit: 5

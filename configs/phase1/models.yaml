@@ -1,0 +1,12 @@
+# Local models served by Ollama. Keys must contain the prompt family name ("llama"/"mistral"),
+# because the upstream prompt code selects templates with `"llama" in args.model`.
+llama3-8b:
+  ollama_tag: llama3:8b-instruct-q8_0     # = paper's "LLaMA 3 8b Instruct" (meta.llama3-8b-instruct-v1:0), Q8 quant
+  family: llama
+  num_ctx: 8192                           # model's native max; inter_turns<=8 (~3-4k tokens) fits easily
+  paper_name: Llama3 8B Instruct
+mistral7b:
+  ollama_tag: mistral:7b-instruct-v0.2-q8_0  # = paper's "Mistral 7b" (mistral.mistral-7b-instruct-v0:2); optional Tier C
+  family: mistral
+  num_ctx: 32768                          # needed for up to 70 turns (~23k tokens)
+  paper_name: Mistral 7b

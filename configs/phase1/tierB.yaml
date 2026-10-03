@@ -1,0 +1,8 @@
+# Tier B, Stage 2: CoT + Self-Critic on all 20 topics (pilot cells skipped).
+# Self-critic = 3 model calls per question incl. a 300-token critique -> ~5x slower than zero-shot.
+name: tierB
+model: llama3-8b
+forms: [explicit]
+methods: [cot, selfcritic]
+inter_turns: [0, 3, 8]
+topics: all
