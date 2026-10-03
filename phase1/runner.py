@@ -403,6 +403,10 @@ def cmd_run(opts):
     except (OllamaUnavailable, RuntimeError) as e:
         status = "aborted"
         log.error("Aborted: %s. Rerun the same command to resume.", e)
+    except Exception:
+        status = "crashed"
+        log.exception("Crashed (unexpected error). Finished questions are saved; fix the cause and rerun to resume.")
+        raise
     finally:
         write_manifest({"event": "end", "time": dt.datetime.now().isoformat(timespec="seconds"),
                         "config_file": opts.config, "status": status, "questions_this_run": n_done_run,

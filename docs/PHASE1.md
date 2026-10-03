@@ -223,3 +223,15 @@ git push -u origin phase1-local-ollama
 
 The old attempt's files (`run_experiments.py`, `*.patch`, `utils/checkpoint.py`, the edited `utils/`
 and `classification_task/`) are **not used** by this pipeline and were left untouched. Whether to keep them is up to you.
+
+## 8. Run history notes (corrections to `results/phase1/run_manifest.jsonl`)
+
+- Model for all Phase 1 runs: `llama3:8b-instruct-q8_0`, Ollama digest
+  `1b8e49cece7fb21deb006f8ced45ce18c54010941dbdf25fb37ecb3cc40dc798` (8.54 GB). Manifest entries before
+  2026-10-02 22:00 show `digest: null`, because Ollama 0.34's `/api/show` doesn't return it. Fixed; it is now read from `/api/tags`.
+- The `tierA` run ending 2026-10-02 18:55:40 is logged as `completed` but actually **crashed** on the truncated upstream
+  `entertain_games` RAG file (see §2 deviations). The runner now logs such cases as `crashed`.
+  All 3,263 questions from that run are valid, and the run resumed at 19:44 and completed at 21:35.
+- The `tierA` start at 19:40:43 has no end entry: that session was killed before it started work. A killed
+  tmux session gives the runner no chance to write an end entry.
+- Tier A totals: 7,898 questions, about 197 min of compute across both runs, 0 truncated prompts.

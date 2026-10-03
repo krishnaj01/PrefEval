@@ -49,10 +49,18 @@ class OllamaBackend:
         d = r.json()
         return {
             "tag": self.tag,
-            "digest": d.get("digest") or d.get("details", {}).get("digest"),
+            # /api/show has no digest in Ollama 0.34; /api/tags lists it per installed model.
+            "digest": d.get("digest") or self._digest_from_tags(),
             "details": d.get("details", {}),
             "modified_at": d.get("modified_at"),
         }
+
+    def _digest_from_tags(self):
+        try:
+            models = requests.get(f"{self.host}/api/tags", timeout=10).json().get("models", [])
+            return next((m.get("digest") for m in models if m.get("name") == self.tag), None)
+        except requests.RequestException:
+            return None
 
     # ---------------------------------------------------------------- generation
     def generate(self, prompt, max_tokens, purpose="answer"):
