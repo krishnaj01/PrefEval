@@ -11,7 +11,9 @@
 - `runner.py` runs cells in the order topic → form → inter_turns → method. The resume key is `task_id` within a cell file.
   The self-critic handlers call the module-global `upstream.baselines_handling_classification.generate_message`, which
   `cmd_run` monkey-patches to the backend adapter.
-- RAG at inter_turns=0 is skipped, because the upstream assert needs at least 5 exchanges.
+- RAG at inter_turns=0 is skipped, because the upstream assert needs at least 5 exchanges. RAG cells whose retrieval file doesn't parse
+  are also skipped (`rag_unavailable_reason`). The known case is upstream's truncated explicit `entertain_games` file.
+  RAG files are loaded only for RAG cells (`need_rag`), so a broken file never blocks the other methods.
 - Option shuffle: `random.Random(f"{seed}:{topic}:{task_id}")`, where `options[0]` is the correct answer in the dataset.
 - Only `run` may rewrite (repair) result files. `status` must stay read-only, because it runs alongside live jobs.
 - The metric is upstream `extract_choice` (strict). `choice_lenient` is a diagnostic only.

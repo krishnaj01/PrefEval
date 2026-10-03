@@ -18,7 +18,7 @@ import os
 import pandas as pd
 
 from phase1.backend import BACKEND_REV
-from phase1.runner import ALL_TOPICS, METHODS, REPO, RESULTS, load_yaml, MODELS_YAML, n_questions
+from phase1.runner import ALL_TOPICS, METHODS, REPO, RESULTS, load_yaml, MODELS_YAML, n_questions, rag_unavailable_reason
 
 SUMMARY_DIR = os.path.join(RESULTS, "summary")
 PAPER = json.load(open(os.path.join(REPO, "phase1", "paper_baselines.json")))
@@ -101,9 +101,15 @@ def write_vs_paper(s, path):
         for _, r in grp.iterrows():
             p = paper_value(model, form, r["method"], r["inter_turns"])
             ptxt, dtxt = ("–", "–") if p is None else (f"{p:.0f}", f"{r['acc_macro'] - p:+.1f}")
-            cov = f"{r['topics']}/20" + ("" if r["topics"] == 20 else " ⚠ partial")
+            missing = [t for t in ALL_TOPICS if r["method"] == "rag" and rag_unavailable_reason(t, form)]
+            usable = 20 - len(missing)
+            cov = f"{r['topics']}/{usable}" + ("" if r["topics"] >= usable else " ⚠ partial") + ("†" if missing else "")
             lines.append(f"| {METHOD_LABEL[r['method']]} | {r['context']} ({r['inter_turns']}) | {r['acc_macro']:.1f} | "
                          f"{ptxt} | {dtxt} | {cov} | {r['n_questions']} | {r['parse_fail_pct']:.1f} | {r['truncated']} |")
+        broken = [t for t in ALL_TOPICS if rag_unavailable_reason(t, form)]
+        if broken and "rag" in set(grp["method"]):
+            lines.append(f"† RAG excludes {', '.join(broken)}: the upstream precomputed SimCSE retrieval file is "
+                         "truncated (only 4/51 questions parse), so RAG is averaged over the remaining topics.")
         lines.append("")
     if s.empty:
         lines.append("_No complete cells yet. Use --include-partial to see in-progress numbers._")

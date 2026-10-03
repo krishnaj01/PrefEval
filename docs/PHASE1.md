@@ -105,6 +105,11 @@ phase1/aggregate.py → results/phase1/summary/{vs_paper.md, summary.csv, per_to
 - **Option shuffling:** a per-question seed instead of one global `random.seed(41)` stream. It is still random, but
   resume-safe and identical across methods, so method comparisons are paired.
 - **Prompt hygiene:** the two whitespace/BOS fixes above. All prompt *text* is unchanged from upstream.
+- **RAG on `entertain_games` (explicit) is skipped:** upstream's precomputed retrieval file
+  `simcse_explicit_pref/entertain_games_overall300_topk_history.json` is truncated (broken since the
+  authors' first commit; only 4 of 51 questions parse). RAG is therefore averaged over 19 topics. Zero-shot,
+  Reminder, CoT and Self-Critic still use all 20. The file can't be rebuilt exactly, because index 1 is an assistant reply the
+  authors never published. An approximate SimCSE rebuild is possible later if needed.
 - **Topics:** the paper's Fig. 6 is averaged over 20 topics. Pilot numbers on 3 topics are indicative only.
 - **Context window:** Ollama `num_ctx` is set to 8192 explicitly. Ollama's default would silently cut the *start*
   of long prompts, which is where the preference is. Every call logs its prompt token count, and any truncation is flagged.

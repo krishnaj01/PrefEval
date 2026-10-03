@@ -17,10 +17,11 @@ if tmux has-session -t "$SESSION" 2>/dev/null; then
   exec tmux attach -t "$SESSION"
 fi
 
+# CMD is handed to bash as a single argv element (no extra shell layer), so normal quoting works.
 CMD="cd '$REPO' && source ~/anaconda3/etc/profile.d/conda.sh && conda activate prefeval \
- && python -m phase1.runner run --config $CONFIG; \
- echo; echo '== run ended (exit '\$?'). Summarise with: python -m phase1.aggregate =='; exec bash"
-tmux new-session -d -s "$SESSION" -n run "bash -lc \"$CMD\""
+ && python -m phase1.runner run --config $CONFIG"'
+ rc=$?; echo; echo "== run ended (exit $rc; 0 = completed, 130 = interrupted, other = error). Summarise with: python -m phase1.aggregate =="; exec bash'
+tmux new-session -d -s "$SESSION" -n run bash -lc "$CMD"
 tmux new-window -t "$SESSION" -n gpu "watch -n 5 nvidia-smi"
 tmux select-window -t "$SESSION:run"
 echo "Started '$CONFIG' in tmux session '$SESSION' (windows: run, gpu)."

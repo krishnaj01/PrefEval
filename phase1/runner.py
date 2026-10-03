@@ -13,6 +13,7 @@ Re-running the same command resumes: questions already in the file are skipped.
 
 import argparse
 import datetime as dt
+import functools
 import json
 import logging
 import os
@@ -101,6 +102,8 @@ def iter_cells(cfg):
                         # Upstream asserts >= topk retrievable exchanges, which fails without distractor
                         # turns (explicit, implicit-choice); paper reports no RAG value at 0.2k either.
                         continue
+                    if method == "rag" and rag_unavailable_reason(topic, form):
+                        continue  # broken upstream retrieval file; reported by `run` and aggregate
                     yield {"topic": topic, "form": form, "inter_turns": inter, "method": method}
 
 
@@ -187,7 +190,7 @@ def lenient_choice(response):
 class TopicContext:
     """All per-(topic, form, inter_turns) data the upstream prompt builders need."""
 
-    def __init__(self, cfg, topic, form, inter_turns, turns_data):
+    def __init__(self, cfg, topic, form, inter_turns, turns_data, need_rag=True):
         self.family = cfg["model_cfg"]["family"]
         self.form = form
         pref_type = {"explicit": "", "implicit-choice": "choice", "implicit-persona": "persona"}[form]
@@ -197,18 +200,44 @@ class TopicContext:
         self.mcq = load_json(os.path.join(DATA, "mcq_options", f"{topic}.json"))
         self.multi_inter_message, self.multi_turn_message = extract_multi_turn_message(
             turns_data, self.args, self.family)
-        rag_dir = os.path.join(DATA, "rag_retrieval")
-        if form == "explicit":
-            self.rag_data = load_json(os.path.join(rag_dir, "simcse_explicit_pref", f"{topic}_overall300_topk_history.json"))
-            self.msg_idx = load_json(os.path.join(rag_dir, "simcse_explicit_pref", f"msg_index_{topic}_overall300_topk_history.json"))
-        else:
+        if form != "explicit":
             sub = "choice-based" if pref_type == "choice" else "persona-driven"
             self.pref_data = load_json(os.path.join(DATA, "implicit_preference", sub, f"{topic}.json"))
-            suffix = "mcq" if pref_type == "choice" else "persona"
-            self.rag_data = load_json(os.path.join(rag_dir, f"simcse_implicit_{pref_type}",
-                                                   f"{topic}_overall300_topk_history_{suffix}.json"))
-            self.msg_rag_data = load_json(os.path.join(
-                rag_dir, "simcse_question_inter_conversation_similarities", f"{topic}_300_inter_similarities.json"))
+        if need_rag:  # only RAG cells read the (large, partly broken upstream) retrieval files
+            self.rag_data, self.msg_idx, self.msg_rag_data = load_rag(topic, form)
+
+
+def rag_paths(topic, form):
+    rag_dir = os.path.join(DATA, "rag_retrieval")
+    if form == "explicit":
+        d = os.path.join(rag_dir, "simcse_explicit_pref")
+        return {"rag_data": os.path.join(d, f"{topic}_overall300_topk_history.json"),
+                "msg_idx": os.path.join(d, f"msg_index_{topic}_overall300_topk_history.json")}
+    pref_type = form.split("-")[1]
+    suffix = "mcq" if pref_type == "choice" else "persona"
+    return {"rag_data": os.path.join(rag_dir, f"simcse_implicit_{pref_type}", f"{topic}_overall300_topk_history_{suffix}.json"),
+            "msg_rag_data": os.path.join(rag_dir, "simcse_question_inter_conversation_similarities",
+                                         f"{topic}_300_inter_similarities.json")}
+
+
+def load_rag(topic, form):
+    p = rag_paths(topic, form)
+    return tuple(load_json(p[k]) if k in p else None for k in ("rag_data", "msg_idx", "msg_rag_data"))
+
+
+@functools.lru_cache(maxsize=None)
+def rag_unavailable_reason(topic, form):
+    """None if the precomputed SimCSE retrieval files for (topic, form) are usable, else why not.
+
+    Known case: upstream's explicit `entertain_games_overall300_topk_history.json` is truncated
+    (only 4 of 51 questions parse) -- broken since the authors' first commit.
+    """
+    for path in rag_paths(topic, form).values():
+        try:
+            load_json(path)
+        except (OSError, json.JSONDecodeError) as e:
+            return f"{os.path.relpath(path, REPO)}: {type(e).__name__}: {e}"
+    return None
 
 
 def run_question(ctx, backend, method, task_id, options, settings):
@@ -289,6 +318,12 @@ def cmd_run(opts):
     # Upstream self-critic handlers call their module-level generate_message (Bedrock) -> route to Ollama.
     upstream_baselines.generate_message = backend.upstream_generate_message
     cells = list(iter_cells(cfg))
+    if "rag" in cfg["methods"]:
+        for topic in cfg["topics"]:
+            for form in cfg["forms"]:
+                reason = rag_unavailable_reason(topic, form)
+                if reason:
+                    log.warning("SKIPPING RAG for %s/%s -- precomputed retrieval file unusable (%s)", topic, form, reason)
     todo = sum(n_questions(c["topic"], cfg["limit"]) - len(read_done(cell_path(cfg["model"], c))) for c in cells)
     log.info("Config %s | model %s (%s) | %d cells | %d questions remaining | log: %s",
              opts.config, cfg["model"], mc["ollama_tag"], len(cells), todo, log_path)
@@ -325,7 +360,8 @@ def cmd_run(opts):
                     log.debug("%s already complete (%d/%d)", tag, total, total)
                     continue
                 log.info("%s: %d/%d done, running %d", tag, len(done), total, len(remaining))
-                ctx = TopicContext(cfg, cell["topic"], cell["form"], cell["inter_turns"], turns_data)
+                ctx = TopicContext(cfg, cell["topic"], cell["form"], cell["inter_turns"], turns_data,
+                                   need_rag=cell["method"] == "rag")
                 correct = sum(r["correct"] for r in done.values())
                 for task_id in tqdm(remaining, desc=f"{cell['method']}/inter{cell['inter_turns']}", leave=False):
                     options, correct_letter = shuffle_options(
@@ -409,7 +445,7 @@ def cmd_show_prompt(opts):
     cfg = {"model": opts.model, "model_cfg": models[opts.model], "rag_topk": 5}
     settings = repo_settings()
     ctx = TopicContext(cfg, opts.topic, opts.form, opts.inter_turns,
-                       load_json(os.path.join(DATA, "filtered_inter_turns.json")))
+                       load_json(os.path.join(DATA, "filtered_inter_turns.json")), need_rag=opts.method == "rag")
     options, correct = shuffle_options(ctx.mcq[opts.task_id]["classification_task_options"], 41, opts.topic, opts.task_id)
 
     class Capture:  # fake backend that records prompts instead of calling the model
