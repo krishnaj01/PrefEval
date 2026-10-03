@@ -14,6 +14,12 @@ Backend revision: 2. Paper: Zhao et al., ICLR 2025, Fig. 6.
 | Reminder | 0.2k (0) | 97.4 | 94 | +3.4 | 20/20 | 1000 | 0.0 | 0 |
 | Reminder | 1k (3) | 78.0 | 80 | -2.0 | 20/20 | 1000 | 0.0 | 0 |
 | Reminder | 3k (8) | 59.4 | 59 | +0.4 | 20/20 | 1000 | 0.1 | 0 |
+| CoT | 0.2k (0) | 93.7 | 83 | +10.7 | 20/20 | 1000 | 0.0 | 0 |
+| CoT | 1k (3) | 78.0 | 67 | +11.0 | 20/20 | 1000 | 0.2 | 0 |
+| CoT | 3k (8) | 63.9 | 50 | +13.9 | 20/20 | 1000 | 0.1 | 0 |
+| Self-Critic | 0.2k (0) | 78.8 | 79 | -0.2 | 20/20 | 1000 | 0.0 | 0 |
+| Self-Critic | 1k (3) | 50.1 | 73 | -22.9 | 20/20 | 1000 | 25.2 | 0 |
+| Self-Critic | 3k (8) | 46.7 | 62 | -15.3 | 20/20 | 1000 | 2.5 | 0 |
 | RAG (top-5) | 1k (3) | 88.6 | 87 | +1.6 | 19/19† | 949 | 5.9 | 0 |
 | RAG (top-5) | 3k (8) | 74.8 | 80 | -5.2 | 19/19† | 949 | 19.1 | 0 |
 † RAG excludes entertain_games: the upstream precomputed SimCSE retrieval file is truncated (only 4/51 questions parse), so RAG is averaged over the remaining topics.
