@@ -13,11 +13,13 @@ import requests
 
 log = logging.getLogger("phase1.backend")
 
-BOS_LLAMA3 = "<|begin_of_text|>"
+# Literal BOS strings upstream writes at the start of raw prompts (Llama-3, Mistral). Ollama adds BOS
+# itself for both (verified: Mistral "hello" -> 3 tokens, "<s>hello" -> 4), so the literal is stripped.
+LEADING_BOS = ("<|begin_of_text|>", "<s>")
 # Bump whenever prompt normalisation / decoding changes; stored in every result record so results
 # from different backend behaviour are never silently mixed (aggregate.py filters on it).
 #   1: initial (double BOS, untrimmed self-critic prompts)  -- invalid, discarded
-#   2: single BOS + trailing-whitespace trim
+#   2: single BOS + trailing-whitespace trim (same rule for Llama-3 and Mistral; Mistral first run under rev 2)
 BACKEND_REV = 2
 
 
@@ -72,8 +74,10 @@ class OllamaBackend:
         # tokens (verified: "hello" -> 2 tokens, "<|begin_of_text|>hello" -> 3). Strip it so the
         # model sees exactly one, as on Bedrock.
         prompt = prompt.lstrip()
-        if prompt.startswith(BOS_LLAMA3):
-            prompt = prompt[len(BOS_LLAMA3):]
+        for bos in LEADING_BOS:
+            if prompt.startswith(bos):
+                prompt = prompt[len(bos):]
+                break
         # Upstream's Llama self-critic templates are indented triple-quoted strings, so they END with
         # "<|end_header_id|>\n        ". With that trailing whitespace Llama-3 emits <|eot_id|>
         # immediately (empty critique -> empty answer -> ~0% accuracy). Stripping trailing spaces/tabs

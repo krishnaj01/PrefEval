@@ -77,7 +77,9 @@ def load_experiment(config_path):
     models = load_yaml(MODELS_YAML)
     if cfg["model"] not in models:
         raise ValueError(f"model '{cfg['model']}' not in {MODELS_YAML}")
-    cfg["model_cfg"] = models[cfg["model"]]
+    cfg["model_cfg"] = dict(models[cfg["model"]])
+    if cfg.get("num_ctx"):  # per-tier override: context size changes memory use, not the model's answers
+        cfg["model_cfg"]["num_ctx"] = cfg["num_ctx"]
     # Upstream picks prompt templates via substring checks on the model name ("llama" in args.model).
     assert cfg["model_cfg"]["family"] in cfg["model"], "model key must contain its family name (llama/mistral)"
     return cfg
@@ -164,6 +166,44 @@ def git_state():
         return {"commit": commit, "branch": branch, "dirty": dirty}
     except Exception as e:  # git missing or not a repo
         return {"error": str(e)}
+
+
+def ollama_server_env():
+    """OLLAMA_* settings of the systemd service (e.g. flash attention / KV-cache type affect numerics)."""
+    try:
+        out = subprocess.check_output(["systemctl", "show", "ollama", "--property=Environment"], text=True)
+        return sorted(kv for kv in out.replace("Environment=", "").split() if kv.startswith("OLLAMA_"))
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# Server settings that change model numerics; only these are compared by the guard.
+NUMERICS_ENV_KEYS = ("OLLAMA_FLASH_ATTENTION", "OLLAMA_KV_CACHE_TYPE")
+OVERRIDE_FILE = "/etc/systemd/system/ollama.service.d/override.conf"
+
+
+def check_ollama_env(model, model_cfg):
+    """Return an error message if the Ollama server settings differ from what this model requires."""
+    required = sorted(model_cfg.get("ollama_env", []))
+    actual_all = ollama_server_env()
+    if isinstance(actual_all, dict):  # systemctl unavailable -> can't verify
+        log.warning("Cannot read Ollama server settings (%s); skipping settings guard.", actual_all.get("error"))
+        return None
+    actual = sorted(kv for kv in actual_all if kv.split("=", 1)[0] in NUMERICS_ENV_KEYS)
+    if actual == required:
+        return None
+    if required:
+        lines = "\\n".join(["[Service]"] + [f'Environment="{kv}"' for kv in required])
+        fix = (f"sudo mkdir -p {os.path.dirname(OVERRIDE_FILE)}\n"
+               f"  printf '{lines}\\n' | sudo tee {OVERRIDE_FILE}\n"
+               "  sudo systemctl daemon-reload && sudo systemctl restart ollama")
+    else:
+        fix = f"sudo rm {OVERRIDE_FILE}\n  sudo systemctl daemon-reload && sudo systemctl restart ollama"
+    return (f"Ollama server settings don't match what '{model}' requires.\n"
+            f"  required: {required or 'Ollama defaults (no override)'}\n"
+            f"  found:    {actual or 'Ollama defaults (no override)'}\n"
+            f"Results under different settings are not comparable to this model's baselines. Switch with:\n  {fix}\n"
+            f"then rerun the same command.")
 
 
 def write_manifest(entry):
@@ -327,6 +367,11 @@ def cmd_run(opts):
     todo = sum(n_questions(c["topic"], cfg["limit"]) - len(read_done(cell_path(cfg["model"], c))) for c in cells)
     log.info("Config %s | model %s (%s) | %d cells | %d questions remaining | log: %s",
              opts.config, cfg["model"], mc["ollama_tag"], len(cells), todo, log_path)
+    env_error = check_ollama_env(cfg["model"], mc)
+    if env_error:
+        log.error(env_error)
+        if not opts.dry_run:
+            return 3
     if opts.dry_run:
         for c in cells:
             done = len(read_done(cell_path(cfg["model"], c)))
@@ -338,6 +383,7 @@ def cmd_run(opts):
         manifest = {"event": "start", "time": dt.datetime.now().isoformat(timespec="seconds"),
                     "config_file": opts.config, "config": {k: v for k, v in cfg.items()},
                     "settings": settings, "backend_rev": BACKEND_REV, "git": git_state(), "ollama_version": backend.server_version(),
+                    "ollama_env": ollama_server_env(),
                     "model": backend.model_info(), "log": os.path.relpath(log_path, REPO)}
     except Exception as e:
         log.error("Cannot reach Ollama at %s (%s). Start it with `ollama serve` / `systemctl start ollama`.",

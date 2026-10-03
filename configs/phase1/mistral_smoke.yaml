@@ -1,0 +1,8 @@
+# Mistral smoke test (~3 min): every method at 0/8 inter turns, 5 questions per cell.
+name: mistral_smoke
+model: mistral7b
+forms: [explicit]
+methods: [zero-shot, remind, cot, selfcritic, rag]
+inter_turns: [0, 8]
+topics: [travel_restaurant]
+limit: 5

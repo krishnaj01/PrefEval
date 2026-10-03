@@ -18,3 +18,6 @@
 - Only `run` may rewrite (repair) result files. `status` must stay read-only, because it runs alongside live jobs.
 - The metric is upstream `extract_choice` (strict). `choice_lenient` is a diagnostic only.
 - Verify changes with `python -m phase1.runner show-prompt ...` and `configs/phase1/smoke.yaml` (about 2 min).
+- **Ollama settings guard:** `models.yaml: ollama_env` lists the numerics-relevant server settings (flash attention, KV-cache type)
+  each model's baselines were produced with: Llama3-8B = defaults, Mistral-7B = FA + q8_0 KV. `run` exits with code 3 on a mismatch.
+  Never relax this for Phase 3 comparisons. Switch the server setting instead.

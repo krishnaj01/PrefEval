@@ -1,0 +1,7 @@
+# Mistral Tier B (M-B): CoT + Self-Critic, short contexts, all 20 topics.
+name: mistral_tierB
+model: mistral7b
+forms: [explicit]
+methods: [cot, selfcritic]
+inter_turns: [0, 3, 8]
+topics: all

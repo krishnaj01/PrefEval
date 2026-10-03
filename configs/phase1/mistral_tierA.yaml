@@ -1,0 +1,7 @@
+# Mistral Tier A (M-A): paper Fig. 6 "Mistral 7b" column, Zero-shot / Reminder / RAG, short contexts, all 20 topics.
+name: mistral_tierA
+model: mistral7b
+forms: [explicit]
+methods: [zero-shot, remind, rag]
+inter_turns: [0, 3, 8]
+topics: all

@@ -1,0 +1,9 @@
+# Mistral Tier C full (M-C): LONG regime = paper rows 10k / 16k / 23k (28 / 48 / 68 inter turns), all 20 topics (pilot cells skipped).
+# Needs the 32k context (and the q8_0 KV cache Ollama setting so it fits in 12 GB, see docs/PHASE1.md).
+name: mistral_tierC_long
+model: mistral7b
+num_ctx: 32768
+forms: [explicit]
+methods: [zero-shot, remind, rag]
+inter_turns: [28, 48, 68]
+topics: all

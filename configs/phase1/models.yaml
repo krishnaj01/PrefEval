@@ -1,12 +1,17 @@
-# Local models served by Ollama. Keys must contain the prompt family name ("llama"/"mistral"),
+# Local models served by Ollama.
+# `ollama_env` = the numerics-relevant Ollama server settings (OLLAMA_FLASH_ATTENTION, OLLAMA_KV_CACHE_TYPE)
+# this model's baselines were produced with. `runner run` refuses to start if the server differs, so later
+# runs (incl. Phase 3) are compared under identical settings. [] = Ollama defaults (no override). Keys must contain the prompt family name ("llama"/"mistral"),
 # because the upstream prompt code selects templates with `"llama" in args.model`.
 llama3-8b:
   ollama_tag: llama3:8b-instruct-q8_0     # = paper's "LLaMA 3 8b Instruct" (meta.llama3-8b-instruct-v1:0), Q8 quant
   family: llama
   num_ctx: 8192                           # model's native max; inter_turns<=8 (~3-4k tokens) fits easily
   paper_name: Llama3 8B Instruct
+  ollama_env: []                          # Phase 1 baselines ran on Ollama defaults
 mistral7b:
-  ollama_tag: mistral:7b-instruct-v0.2-q8_0  # = paper's "Mistral 7b" (mistral.mistral-7b-instruct-v0:2); optional Tier C
+  ollama_tag: mistral:7b-instruct-v0.2-q8_0  # = paper's "Mistral 7b" (mistral.mistral-7b-instruct-v0:2); Q8, 7.7 GB
   family: mistral
-  num_ctx: 32768                          # needed for up to 70 turns (~23k tokens)
+  num_ctx: 8192                           # short tiers (<= 8 inter turns); long tier overrides to 32768
   paper_name: Mistral 7b
+  ollama_env: [OLLAMA_FLASH_ATTENTION=1, OLLAMA_KV_CACHE_TYPE=q8_0]  # needed so 32k ctx fits in 12 GB

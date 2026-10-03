@@ -128,7 +128,7 @@ Self-Critic **3–7 s** (3 calls). Questions per topic: travel_restaurant 56, li
 | **3** | `tierA` | same as step 1, all 20 topics (pilot cells skipped) | +6,600 | **~1.5 h** (allow 2.5) |
 | **4** | `tierB` | same as step 2, all 20 topics | +4,950 | **~4 h** (allow 6) |
 | opt. | `tierD_implicit` | implicit choice + persona baselines for Phase 3 | ~2,600 (3 topics) | ~45 min |
-| opt. | `tierC_mistral_long` | Mistral-7B up to 70 turns (needs `ollama pull mistral:7b-instruct-v0.2-q8_0`) | ~2,600 | 4–10 h (unmeasured) |
+| opt. | `mistral_*` | Mistral-7B-v0.2, see §9 | | |
 
 Steps 1–4 complete **Phase 1**: the full Llama3-8B column of Fig. 6 over 20 topics.
 
@@ -235,3 +235,30 @@ and `classification_task/`) are **not used** by this pipeline and were left unto
 - The `tierA` start at 19:40:43 has no end entry: that session was killed before it started work. A killed
   tmux session gives the runner no chance to write an end entry.
 - Tier A totals: 7,898 questions, about 197 min of compute across both runs, 0 truncated prompts.
+
+## 9. Second model: Mistral-7B-Instruct-v0.2 (`mistral:7b-instruct-v0.2-q8_0`)
+
+This is the paper's "Mistral 7b" (Bedrock `mistral.mistral-7b-instruct-v0:2`). Fig. 6 gives baselines for all 5 methods from 0.2k up to
+23k tokens. Its 32k context gives the proposal's **long regime**, which Llama3-8B's 8k context can't reach.
+
+Setup findings (smoke test, 2026-10-03):
+- **Same double-BOS issue as Llama.** Upstream Mistral prompts start with a literal `<s>`, and Ollama adds BOS too
+  ("hello" → 3 tokens, "<s>hello" → 4). The literal is stripped, which is the same `backend_rev 2` rule as Llama.
+- 0 parse failures and proper self-critiques. The upstream Mistral templates aren't indented, so the empty-revision issue doesn't occur.
+- **Long-context size:** 68 inter turns (paper's 23k row) = 26.9k–27.7k Mistral tokens, so it fits in a 32k context without truncation.
+- **GPU memory:** at 32k context with the default fp16 KV cache the model needs about 12 GB and spills 10% onto the CPU,
+  giving 11–695 s per question. Fix: flash attention + 8-bit KV cache (`OLLAMA_FLASH_ATTENTION=1`,
+  `OLLAMA_KV_CACHE_TYPE=q8_0`), which roughly halves context memory. **All Mistral tiers run with this setting**
+  (it is recorded in the manifest as `ollama_env`), so short and long Mistral results are consistent. The Llama runs used Ollama defaults.
+  **Guard:** `configs/phase1/models.yaml` stores each model's required setting, and the runner refuses to start on a
+  mismatch and prints the switch command. This applies to Phase 3 too, so baseline and new method always run under identical settings.
+
+| Tier | Config | What | Questions | Est. time |
+|---|---|---|---|---|
+| M-A | `mistral_tierA` | Zero-shot, Reminder, RAG; 0.2k/1k/3k; 20 topics | ~7,900 | ~4 h |
+| M-B | `mistral_tierB` | CoT, Self-Critic; 0.2k/1k/3k; 20 topics | ~6,000 | ~7 h |
+| M-C pilot | `mistral_tierC_long_pilot` | Zero-shot, Reminder, RAG; 10k/16k/23k; 3 topics | ~1,575 | re-measure after the KV setting (est. 5–8 h) |
+| M-C full | `mistral_tierC_long` | same, 20 topics (pilot cells skipped) | ~9,000 | ~30–40 h, across several nights |
+
+Mixtral-8x7B (also in the paper) was ruled out: Q4 is 28.4 GB, which is more than 12 GB VRAM plus ~10 GB free RAM. Q2/Q3 would fit
+only with heavy CPU offload and degraded quality, so the results wouldn't be comparable to the paper.
