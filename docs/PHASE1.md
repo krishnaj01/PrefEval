@@ -246,6 +246,8 @@ Setup findings (smoke test, 2026-10-03):
   ("hello" → 3 tokens, "<s>hello" → 4). The literal is stripped, which is the same `backend_rev 2` rule as Llama.
 - 0 parse failures and proper self-critiques. The upstream Mistral templates aren't indented, so the empty-revision issue doesn't occur.
 - **Long-context size:** 68 inter turns (paper's 23k row) = 26.9k–27.7k Mistral tokens, so it fits in a 32k context without truncation.
+- **Measured speed with the setting below (100% GPU, ~2,000 tokens/s):** 4k-token prompt 2.6 s, 12k 5.3 s, 27k 13.9 s,
+  RAG at 27.7k 21 s per call.
 - **GPU memory:** at 32k context with the default fp16 KV cache the model needs about 12 GB and spills 10% onto the CPU,
   giving 11–695 s per question. Fix: flash attention + 8-bit KV cache (`OLLAMA_FLASH_ATTENTION=1`,
   `OLLAMA_KV_CACHE_TYPE=q8_0`), which roughly halves context memory. **All Mistral tiers run with this setting**
@@ -257,8 +259,8 @@ Setup findings (smoke test, 2026-10-03):
 |---|---|---|---|---|
 | M-A | `mistral_tierA` | Zero-shot, Reminder, RAG; 0.2k/1k/3k; 20 topics | ~7,900 | ~4 h |
 | M-B | `mistral_tierB` | CoT, Self-Critic; 0.2k/1k/3k; 20 topics | ~6,000 | ~7 h |
-| M-C pilot | `mistral_tierC_long_pilot` | Zero-shot, Reminder, RAG; 10k/16k/23k; 3 topics | ~1,575 | re-measure after the KV setting (est. 5–8 h) |
-| M-C full | `mistral_tierC_long` | same, 20 topics (pilot cells skipped) | ~9,000 | ~30–40 h, across several nights |
+| M-C pilot | `mistral_tierC_long_pilot` | Zero-shot, Reminder, RAG; 10k/16k/23k; 3 topics | ~1,575 | ~4 h (allow 6) |
+| M-C full | `mistral_tierC_long` | same, 20 topics (pilot cells skipped) | ~9,000 | ~22 h, across several nights |
 
 Mixtral-8x7B (also in the paper) was ruled out: Q4 is 28.4 GB, which is more than 12 GB VRAM plus ~10 GB free RAM. Q2/Q3 would fit
 only with heavy CPU offload and degraded quality, so the results wouldn't be comparable to the paper.
