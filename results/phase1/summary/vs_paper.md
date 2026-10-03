@@ -24,3 +24,17 @@ Backend revision: 2. Paper: Zhao et al., ICLR 2025, Fig. 6.
 | RAG (top-5) | 3k (8) | 74.8 | 80 | -5.2 | 19/19† | 949 | 19.1 | 0 |
 † RAG excludes entertain_games: the upstream precomputed SimCSE retrieval file is truncated (only 4/51 questions parse), so RAG is averaged over the remaining topics.
 
+## mistral7b | explicit
+
+| Method | Context (inter_turns) | Ours | Paper | Δ (ours − paper) | Topics | Questions | Parse-fail % | Truncated |
+|---|---|---|---|---|---|---|---|---|
+| Zero-shot | 0.2k (0) | 95.5 | 87 | +8.5 | 20/20 | 1000 | 0.0 | 0 |
+| Zero-shot | 1k (3) | 61.5 | 66 | -4.5 | 20/20 | 1000 | 0.0 | 0 |
+| Zero-shot | 3k (8) | 55.5 | 57 | -1.5 | 20/20 | 1000 | 0.0 | 0 |
+| Reminder | 0.2k (0) | 96.2 | 95 | +1.2 | 20/20 | 1000 | 0.0 | 0 |
+| Reminder | 1k (3) | 78.9 | 85 | -6.1 | 20/20 | 1000 | 0.0 | 0 |
+| Reminder | 3k (8) | 71.3 | 75 | -3.7 | 20/20 | 1000 | 0.0 | 0 |
+| RAG (top-5) | 1k (3) | 81.0 | 87 | -6.0 | 19/19† | 949 | 0.0 | 0 |
+| RAG (top-5) | 3k (8) | 75.7 | 86 | -10.3 | 19/19† | 949 | 0.6 | 0 |
+† RAG excludes entertain_games: the upstream precomputed SimCSE retrieval file is truncated (only 4/51 questions parse), so RAG is averaged over the remaining topics.
+
