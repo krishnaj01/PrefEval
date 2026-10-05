@@ -1,0 +1,9 @@
+# Mistral implicit-choice baselines (own baselines for Phase 3; the paper reports implicit forms only for the
+# generation task, so there is no paper classification number to compare against).
+# Zero-shot / Reminder / RAG at 0.2k / 1k / 3k (inter_turns 0 / 3 / 8), all 20 topics. RAG at inter 0 is skipped.
+name: mistral_implicitA
+model: mistral7b
+forms: [implicit-choice]
+methods: [zero-shot, remind, rag]
+inter_turns: [0, 3, 8]
+topics: all

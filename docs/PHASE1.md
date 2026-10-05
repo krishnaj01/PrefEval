@@ -264,3 +264,18 @@ Setup findings (smoke test, 2026-10-03):
 
 Mixtral-8x7B (also in the paper) was ruled out: Q4 is 28.4 GB, which is more than 12 GB VRAM plus ~10 GB free RAM. Q2/Q3 would fit
 only with heavy CPU offload and degraded quality, so the results wouldn't be comparable to the paper.
+
+## 10. Implicit-choice baselines (own baselines for Phase 3)
+
+The paper reports implicit preferences (choice-based, persona-driven) **only for the generation task** (Fig. 5,
+Tables 8–13), judged by Claude 3 Sonnet, which isn't reproducible locally. Its classification results (Fig. 6) are explicit-only.
+The proposal scopes Phase 3 to explicit **and implicit-choice**, so Phase 1 also produces implicit-choice
+classification baselines with the same validated pipeline. They are not compared against the paper; they are the reference for Phase 3.
+
+| Config | Model | What | Questions | Est. time | Ollama setting |
+|---|---|---|---|---|---|
+| `mistral_implicitA` | Mistral-7B | implicit-choice; Zero-shot, Reminder, RAG; 0.2k/1k/3k; 20 topics | 8,000 | ~4 h | FA + q8 KV (Mistral's) |
+| `llama_implicitA` | Llama3-8B | same | 8,000 | ~3–4 h | Ollama defaults (Llama's) |
+
+All 20 implicit-choice RAG files are intact, so no topic is excluded. The old `tierD_implicit.yaml` (3 hard pilot topics + persona) was
+replaced by these two configs. Implicit-persona, CoT/Self-Critic and long context for implicit can be added later if Phase 3 needs them.

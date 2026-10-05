@@ -1,8 +1,0 @@
-# OPTIONAL Tier D: implicit-preference classification baselines (paper has no classification numbers
-# for these forms -> these become your own baselines for the Phase 3 comparison).
-name: tierD_implicit
-model: llama3-8b
-forms: [implicit-choice, implicit-persona]
-methods: [zero-shot, remind, rag]
-inter_turns: [0, 3, 8]
-topics: [travel_restaurant, lifestyle_dietary, entertain_shows]
