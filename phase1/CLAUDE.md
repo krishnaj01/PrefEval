@@ -14,6 +14,8 @@
 - RAG at inter_turns=0 is skipped, because the upstream assert needs at least 5 exchanges. RAG cells whose retrieval file doesn't parse
   are also skipped (`rag_unavailable_reason`). The known case is upstream's truncated explicit `entertain_games` file.
   RAG files are loaded only for RAG cells (`need_rag`), so a broken file never blocks the other methods.
+  Upstream implicit RAG files end early in 7 topics. `rag_available_count` / `n_questions(..., form, method)` limit RAG
+  cells to questions that have retrieval data (973/1000 for implicit). Use these helpers, never `len(mcq)`, for RAG cell sizes.
 - Option shuffle: `random.Random(f"{seed}:{topic}:{task_id}")`, where `options[0]` is the correct answer in the dataset.
 - Only `run` may rewrite (repair) result files. `status` must stay read-only, because it runs alongside live jobs.
 - The metric is upstream `extract_choice` (strict). `choice_lenient` is a diagnostic only.

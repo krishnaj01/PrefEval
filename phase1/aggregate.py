@@ -18,7 +18,7 @@ import os
 import pandas as pd
 
 from phase1.backend import BACKEND_REV
-from phase1.runner import ALL_TOPICS, METHODS, REPO, RESULTS, load_yaml, MODELS_YAML, n_questions, rag_unavailable_reason
+from phase1.runner import ALL_TOPICS, METHODS, REPO, RESULTS, load_yaml, MODELS_YAML, n_questions, rag_unavailable_reason, rag_available_count, _n_dataset
 
 SUMMARY_DIR = os.path.join(RESULTS, "summary")
 PAPER = json.load(open(os.path.join(REPO, "phase1", "paper_baselines.json")))
@@ -55,7 +55,7 @@ def per_topic_table(df):
     g = df.groupby(keys).agg(n=("correct", "size"), acc=("correct", "mean"), parse_fail=("parse_fail", "mean"),
                              acc_lenient=("correct_lenient", "mean"), truncated=("truncated", "sum"),
                              sec_per_q=("seconds", "mean"), prompt_tokens=("prompt_tokens", "mean")).reset_index()
-    g["n_expected"] = g["topic"].map(lambda t: n_questions(t))
+    g["n_expected"] = [n_questions(t, form=f, method=m) for t, f, m in zip(g["topic"], g["form"], g["method"])]
     g["complete"] = g["n"] >= g["n_expected"]
     return g
 
@@ -106,6 +106,12 @@ def write_vs_paper(s, path):
             cov = f"{r['topics']}/{usable}" + ("" if r["topics"] >= usable else " ⚠ partial") + ("†" if missing else "")
             lines.append(f"| {METHOD_LABEL[r['method']]} | {r['context']} ({r['inter_turns']}) | {r['acc_macro']:.1f} | "
                          f"{ptxt} | {dtxt} | {cov} | {r['n_questions']} | {r['parse_fail_pct']:.1f} | {r['truncated']} |")
+        short = [(t, rag_available_count(t, form), _n_dataset(t)) for t in ALL_TOPICS
+                 if not rag_unavailable_reason(t, form) and rag_available_count(t, form) < _n_dataset(t)]
+        if short and "rag" in set(grp["method"]):
+            lost = sum(n - k for _, k, n in short)
+            lines.append(f"‡ RAG covers {sum(_n_dataset(t) for t in ALL_TOPICS) - lost} of {sum(_n_dataset(t) for t in ALL_TOPICS)} questions: "
+                         "the upstream retrieval files end early for " + ", ".join(f"{t} ({k}/{n})" for t, k, n in short) + ".")
         broken = [t for t in ALL_TOPICS if rag_unavailable_reason(t, form)]
         if broken and "rag" in set(grp["method"]):
             lines.append(f"† RAG excludes {', '.join(broken)}: the upstream precomputed SimCSE retrieval file is "

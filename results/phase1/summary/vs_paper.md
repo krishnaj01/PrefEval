@@ -53,3 +53,17 @@ Backend revision: 2. Paper: Zhao et al., ICLR 2025, Fig. 6.
 | RAG (top-5) | 23k (68) | 53.7 | 75 | -21.3 | 19/19† | 949 | 0.2 | 0 |
 † RAG excludes entertain_games: the upstream precomputed SimCSE retrieval file is truncated (only 4/51 questions parse), so RAG is averaged over the remaining topics.
 
+## mistral7b | implicit-choice
+
+| Method | Context (inter_turns) | Ours | Paper | Δ (ours − paper) | Topics | Questions | Parse-fail % | Truncated |
+|---|---|---|---|---|---|---|---|---|
+| Zero-shot | 0.2k (0) | 81.0 | – | – | 20/20 | 1000 | 0.0 | 0 |
+| Zero-shot | 1k (3) | 50.8 | – | – | 20/20 | 1000 | 0.0 | 0 |
+| Zero-shot | 3k (8) | 47.5 | – | – | 20/20 | 1000 | 0.0 | 0 |
+| Reminder | 0.2k (0) | 88.4 | – | – | 20/20 | 1000 | 0.0 | 0 |
+| Reminder | 1k (3) | 71.9 | – | – | 20/20 | 1000 | 0.0 | 0 |
+| Reminder | 3k (8) | 63.1 | – | – | 20/20 | 1000 | 0.0 | 0 |
+| RAG (top-5) | 1k (3) | 69.0 | – | – | 20/20 | 973 | 0.0 | 0 |
+| RAG (top-5) | 3k (8) | 64.0 | – | – | 20/20 | 973 | 0.0 | 0 |
+‡ RAG covers 973 of 1000 questions: the upstream retrieval files end early for travel_restaurant (53/56), entertain_shows (60/62), pet_ownership (35/43), lifestyle_health (45/49), education_learning_styles (26/31), shop_technology (32/35), travel_hotel (52/54).
+

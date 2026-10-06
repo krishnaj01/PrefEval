@@ -114,8 +114,27 @@ def cell_path(model, cell):
                         f"{cell['topic']}.jsonl")
 
 
-def n_questions(topic, limit=None):
-    n = len(load_json(os.path.join(DATA, "mcq_options", f"{topic}.json")))
+@functools.lru_cache(maxsize=None)
+def _n_dataset(topic):
+    return len(load_json(os.path.join(DATA, "mcq_options", f"{topic}.json")))
+
+
+@functools.lru_cache(maxsize=None)
+def rag_available_count(topic, form):
+    """Questions with precomputed retrieval scores. Upstream's implicit RAG files stop a few questions early
+    in 7 topics (e.g. pet_ownership: 35 of 43); the entries present are aligned with the first questions."""
+    n = _n_dataset(topic)
+    for key, path in rag_paths(topic, form).items():
+        if key != "msg_idx":  # msg_idx is keyed by message, not by question
+            n = min(n, len(load_json(path)))
+    return n
+
+
+def n_questions(topic, limit=None, form=None, method=None):
+    """Questions a cell should contain: the dataset size, or for RAG only those with retrieval data."""
+    n = _n_dataset(topic)
+    if method == "rag" and form and not rag_unavailable_reason(topic, form):
+        n = rag_available_count(topic, form)
     return min(n, limit) if limit else n
 
 
@@ -364,7 +383,10 @@ def cmd_run(opts):
                 reason = rag_unavailable_reason(topic, form)
                 if reason:
                     log.warning("SKIPPING RAG for %s/%s -- precomputed retrieval file unusable (%s)", topic, form, reason)
-    todo = sum(n_questions(c["topic"], cfg["limit"]) - len(read_done(cell_path(cfg["model"], c))) for c in cells)
+                elif rag_available_count(topic, form) < _n_dataset(topic):
+                    log.warning("RAG for %s/%s covers only %d of %d questions (upstream retrieval file ends early)",
+                                topic, form, rag_available_count(topic, form), _n_dataset(topic))
+    todo = sum(n_questions(c["topic"], cfg["limit"], c["form"], c["method"]) - len(read_done(cell_path(cfg["model"], c))) for c in cells)
     log.info("Config %s | model %s (%s) | %d cells | %d questions remaining | log: %s",
              opts.config, cfg["model"], mc["ollama_tag"], len(cells), todo, log_path)
     env_error = check_ollama_env(cfg["model"], mc)
@@ -376,7 +398,7 @@ def cmd_run(opts):
         for c in cells:
             done = len(read_done(cell_path(cfg["model"], c)))
             print(f"{c['topic']:34s} {c['form']:17s} inter{c['inter_turns']:<3d} {c['method']:10s} "
-                  f"{done}/{n_questions(c['topic'], cfg['limit'])}")
+                  f"{done}/{n_questions(c['topic'], cfg['limit'], c['form'], c['method'])}")
         return 0
 
     try:
@@ -399,7 +421,7 @@ def cmd_run(opts):
             for ci, cell in enumerate(cells, 1):
                 path = cell_path(cfg["model"], cell)
                 done = read_done(path, repair=True)
-                total = n_questions(cell["topic"], cfg["limit"])
+                total = n_questions(cell["topic"], cfg["limit"], cell["form"], cell["method"])
                 remaining = [i for i in range(total) if i not in done]
                 tag = f"[{ci}/{len(cells)}] {cell['topic']} | {cell['form']} | inter{cell['inter_turns']} | {cell['method']}"
                 if not remaining:
@@ -467,7 +489,7 @@ def cmd_status(opts):
     rows, remaining_by_method, sec_by_method = [], {}, {}
     for c in iter_cells(cfg):
         recs = read_done(cell_path(cfg["model"], c))
-        total = n_questions(c["topic"], cfg["limit"])
+        total = n_questions(c["topic"], cfg["limit"], c["form"], c["method"])
         m = c["method"]
         remaining_by_method[m] = remaining_by_method.get(m, 0) + total - len(recs)
         sec_by_method.setdefault(m, []).extend(r["seconds"] for r in recs.values())
