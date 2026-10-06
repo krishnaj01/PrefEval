@@ -276,6 +276,8 @@ classification baselines with the same validated pipeline. They are not compared
 |---|---|---|---|---|---|
 | `mistral_implicitA` | Mistral-7B | implicit-choice; Zero-shot, Reminder, RAG; 0.2k/1k/3k; 20 topics | 8,000 | ~4 h | FA + q8 KV (Mistral's) |
 | `llama_implicitA` | Llama3-8B | same | 8,000 | ~3–4 h | Ollama defaults (Llama's) |
+| `llama_implicitB` | Llama3-8B | implicit-choice; CoT, Self-Critic; 0.2k/1k/3k; 20 topics | 6,000 | ~5–6 h | Ollama defaults |
+| `mistral_implicitB` | Mistral-7B | same | 6,000 | ~5 h | FA + q8 KV |
 
 All 20 implicit-choice RAG files parse, but **in 7 topics they stop a few questions early** (upstream data issue,
 found 2026-10-06): travel_restaurant 53/56, entertain_shows 60/62, pet_ownership 35/43, lifestyle_health 45/49,
@@ -283,4 +285,5 @@ education_learning_styles 26/31, shop_technology 32/35, travel_hotel 52/54. The 
 question/inter-turn similarity file are short in the same way. The entries that exist are correctly aligned with the first questions (checked).
 So implicit RAG is evaluated on **973 of 1,000 questions**, and the other methods on all 1,000. `vs_paper.md` notes this with ‡.
 (The first Mistral run logged 54 `IndexError`s for these questions. The runner now counts only questions with retrieval data.) The old `tierD_implicit.yaml` (3 hard pilot topics + persona) was
-replaced by these two configs. Implicit-persona, CoT/Self-Critic and long context for implicit can be added later if Phase 3 needs them.
+replaced by these two configs. Part B (CoT + Self-Critic) completes all five baselines for implicit-choice, as the proposal's Phase 3 compares against all five.
+The paper's implicit tables (8–13) also cover all five methods, but for the generation task. Implicit-persona and implicit long context can be added later if needed.
