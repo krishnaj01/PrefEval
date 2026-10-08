@@ -83,6 +83,12 @@ Backend revision: 2. Paper: Zhao et al., ICLR 2025, Fig. 6.
 | Reminder | 0.2k (0) | 88.4 | – | – | 20/20 | 1000 | 0.0 | 0 |
 | Reminder | 1k (3) | 71.9 | – | – | 20/20 | 1000 | 0.0 | 0 |
 | Reminder | 3k (8) | 63.1 | – | – | 20/20 | 1000 | 0.0 | 0 |
+| CoT | 0.2k (0) | 74.0 | – | – | 20/20 | 1000 | 0.0 | 0 |
+| CoT | 1k (3) | 60.2 | – | – | 20/20 | 1000 | 0.0 | 0 |
+| CoT | 3k (8) | 59.5 | – | – | 20/20 | 1000 | 0.0 | 0 |
+| Self-Critic | 0.2k (0) | 67.2 | – | – | 20/20 | 1000 | 0.3 | 0 |
+| Self-Critic | 1k (3) | 51.8 | – | – | 20/20 | 1000 | 0.1 | 0 |
+| Self-Critic | 3k (8) | 50.9 | – | – | 20/20 | 1000 | 0.0 | 0 |
 | RAG (top-5) | 1k (3) | 69.0 | – | – | 20/20 | 973 | 0.0 | 0 |
 | RAG (top-5) | 3k (8) | 64.0 | – | – | 20/20 | 973 | 0.0 | 0 |
 ‡ RAG covers 973 of 1000 questions: the upstream retrieval files end early for travel_restaurant (53/56), entertain_shows (60/62), pet_ownership (35/43), lifestyle_health (45/49), education_learning_styles (26/31), shop_technology (32/35), travel_hotel (52/54).
