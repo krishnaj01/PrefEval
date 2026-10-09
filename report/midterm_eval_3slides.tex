@@ -129,11 +129,12 @@ Mid-term covers Phase 1.\par}
 \frametitle{Results and Findings in Tabular Format}
 \centering
 \vspace{-2pt}
-{\scriptsize Explicit preference: classification accuracy (\%), 20 topics. \textbf{Ours} (paper Fig.\ 6)\par}
+{\scriptsize Explicit preference: classification accuracy (\%), averaged over 20 topics. Paper (left) vs.\ our reproduction (right)\par}
 \vspace{2pt}
-\resizebox{0.84\linewidth}{!}{\input{generated/tab_slide_explicit.tex}}
+\resizebox{\linewidth}{!}{\input{generated/tab_slide_compare.tex}}\\[1pt]
+{\tiny -- = not available: Llama-3-8B has an 8k context limit (as in the paper); RAG is undefined at 0.2k; our CoT and Self-Critic were run up to 3k only.\par}
 
-\vspace{8pt}
+\vspace{5pt}
 \begin{minipage}[t]{0.36\linewidth}\centering
 {\scriptsize Explicit vs.\ implicit (choice) at 3k tokens (\%)\par}\vspace{2pt}
 \resizebox{\linewidth}{!}{\input{generated/tab_slide_implicit.tex}}

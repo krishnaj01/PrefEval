@@ -430,6 +430,28 @@ def tab_slides():
     open(os.path.join(OUT_GEN, "tab_slide_implicit.tex"), "w").write("\n".join(lines) + "\n")
 
 
+def tab_slide_compare():
+    """Side-by-side comparison for the mid-evaluation slide: paper (left) | ours (right), explicit preference."""
+    xs = [0, 3, 8, 28, 48, 68]
+    n = len(xs)
+    col = "c" * n
+    lines = [r"\begin{tabular}{ll" + col + "@{\hspace{10pt}}" + col + "}", r"\toprule",
+             r" & & \multicolumn{%d}{c}{\textbf{Paper} (Fig.\ 6, Bedrock)} & \multicolumn{%d}{c}{\textbf{Ours} (local, Ollama Q8)} \\" % (n, n),
+             r"\cmidrule(lr){3-%d}\cmidrule(lr){%d-%d}" % (2 + n, 3 + n, 2 + 2 * n),
+             r"Model & Method & " + " & ".join(TOK[x] for x in xs) + " & " + " & ".join(TOK[x] for x in xs) + r" \\",
+             r"\midrule"]
+    for model, short in [("llama3-8b", "Llama-3-8B"), ("mistral7b", "Mistral-7B")]:
+        for k, m in enumerate(METHODS):
+            pc = [str(paper(model, m, x)) if paper(model, m, x) is not None else "--" for x in xs]
+            oc = [f"{acc(model, 'explicit', m, x):.1f}" if acc(model, "explicit", m, x) is not None else "--" for x in xs]
+            lines.append((short if k == 0 else "") + " & " + METHOD_LABEL[m].replace(" (top-5)", "") + " & "
+                         + " & ".join(pc) + " & " + " & ".join(oc) + r" \\")
+        if model == "llama3-8b":
+            lines.append(r"\midrule")
+    lines += [r"\bottomrule", r"\end{tabular}"]
+    open(os.path.join(OUT_GEN, "tab_slide_compare.tex"), "w").write("\n".join(lines) + "\n")
+
+
 def macros(sc, pos, rf, total_q_run, total_h):
     deltas = []
     for model in ["llama3-8b", "mistral7b"]:
@@ -489,6 +511,7 @@ def main():
     tab_selfcritic(sc)
     tab_context()
     tab_slides()
+    tab_slide_compare()
     tq, th = compute_table()
     m = macros(sc, pos, rf, tq, th)
     print(json.dumps(m, indent=1))
