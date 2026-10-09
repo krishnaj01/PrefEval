@@ -1,0 +1,13 @@
+\begin{tabular}{l rrr rrr}
+\toprule
+ & \multicolumn{3}{c}{Llama-3-8B} & \multicolumn{3}{c}{Mistral-7B} \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}
+Method & 0.2k & 1k & 3k & 0.2k & 1k & 3k \\
+\midrule
+Zero-shot & 77.0 & 53.3 & 46.0 & 81.0 & 50.8 & 47.5 \\
+Reminder & 91.0 & 77.0 & 60.2 & 88.4 & 71.9 & 63.1 \\
+CoT & 84.4 & 70.3 & 61.7 & 74.0 & 60.1 & 59.5 \\
+Self-Critic & 66.1 & 50.1 & 38.7 & 67.2 & 51.8 & 50.9 \\
+RAG (top-5) & -- & 82.8 & 73.7 & -- & 69.0 & 64.0 \\
+\bottomrule
+\end{tabular}
