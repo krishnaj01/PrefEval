@@ -11,3 +11,7 @@ logs/
 prefeval.zip
 archive/
 *.tmp
+
+# Phase 2 model checkpoints (several GB; reproducible from configs + pinned revisions)
+models/
+results/phase2_smoke/

@@ -1,0 +1,45 @@
+# Phase 2 (preference-detection classifier) dependencies, installed into the `prefeval-p2` conda env (Python 3.11):
+#   conda create -y -n prefeval-p2 python=3.11 && conda activate prefeval-p2 && pip install -r requirements-phase2.txt
+# Exact versions are pinned after the first successful install (see the pinned block at the bottom).
+
+# --- deep learning
+torch>=2.5                 # CUDA 12.x wheel from PyPI; RTX 3060 supports bf16
+transformers>=4.51         # >=4.48 for ModernBERT, >=4.51 for Qwen3 sequence classification
+peft>=0.13                 # LoRA for TinyLlama / Qwen3
+accelerate>=1.0            # required by the HF Trainer
+datasets>=3.0              # OpenAssistant (oasst1) download + tokenisation pipeline
+
+# --- analysis
+scikit-learn>=1.5          # metrics, logistic-regression stacking, calibration
+pandas>=2.2
+matplotlib>=3.9
+
+# --- utilities
+pyyaml>=6.0
+requests>=2.32             # Ollama HTTP API (pseudo-labelling, LLM baseline)
+tqdm>=4.66
+tabulate>=0.9             # markdown tables in phase2.report
+
+# --- needed because phase2 reuses phase1 modules (phase1.backend / phase1.runner import these)
+beautifulsoup4>=4.12
+tiktoken>=0.8
+
+# --- exact versions installed and tested on 2026-10-16 (RTX 3060, CUDA 13.0 driver, Python 3.11.17).
+# For an exact reproduction use:  pip install -r requirements-phase2.txt --constraint <(grep "==" requirements-phase2.txt | sed "s/^# //")
+# accelerate==1.15.0
+# beautifulsoup4==4.15.0
+# datasets==5.1.0
+# matplotlib==3.11.2
+# numpy==2.4.6
+# pandas==3.0.6
+# peft==0.21.2
+# PyYAML==6.0.3
+# requests==2.34.2
+# safetensors==0.8.0
+# scikit-learn==1.9.1
+# tabulate==0.10.0
+# tiktoken==0.14.0
+# tokenizers==0.23.3
+# torch==2.14.1
+# tqdm==4.70.1
+# transformers==5.20.0

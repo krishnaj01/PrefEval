@@ -1,0 +1,14 @@
+name: distilbert
+hf_id: distilbert/distilbert-base-uncased
+revision: null                 # resolved commit hash recorded in metrics.json / run manifest
+kind: encoder                  # full fine-tuning
+max_len: 256
+lr: 3.0e-5
+epochs: 4
+batch_size: 32
+grad_accum: 1
+weight_decay: 0.01
+warmup_ratio: 0.1
+precision: fp32
+evals_per_epoch: 4             # validation points per epoch (for loss curves + early stopping)
+early_stopping_patience: 4

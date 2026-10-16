@@ -1,0 +1,16 @@
+name: qwen3
+hf_id: Qwen/Qwen3-1.7B
+revision: null
+kind: decoder                  # sequence-classification head on the last token + LoRA adapters
+max_len: 256
+lr: 2.0e-4
+epochs: 2
+batch_size: 16
+grad_accum: 2
+weight_decay: 0.0
+warmup_ratio: 0.1
+precision: bf16
+gradient_checkpointing: true
+evals_per_epoch: 4
+early_stopping_patience: 4
+lora: {r: 16, alpha: 32, dropout: 0.05, target_modules: [q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj]}

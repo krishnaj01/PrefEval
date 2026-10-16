@@ -1,0 +1,38 @@
+{
+ "build_data": {
+  "updated": "2026-10-16T14:43:16",
+  "prefeval_turns": {
+   "rows": 8757,
+   "sha256": "5c0d1838e9ae5c31feefb49c1a30f13d0ab37981cc7c564096c5a7f7f145644e",
+   "duplicates_dropped": 1553,
+   "conflicts_removed": 0
+  },
+  "lmsys_ood": {
+   "rows": 316,
+   "sha256": "f3d408fa03426fa5897b8037f40f75e3bf66cb993bbe2fe42f7adb3ab327b446"
+  },
+  "source_counts": {
+   "explicit_pref|1": 988,
+   "question|0": 994,
+   "choice_query|0": 577,
+   "choice_selection|1": 991,
+   "persona_turn|None": 5177,
+   "persona_pref|1": 30
+  }
+ },
+ "splits": {
+  "updated": "2026-10-16T14:54:48",
+  "dataset_sha256": "fe1a26998b70111980cac8acf4680fdeb14a1d8effc3ffae173c0bed62ca457e",
+  "rows": 3580,
+  "splits_sha256": "ec2241ff483e58c3fbb65effe32d974ad662e08a5c22b1f90b397dbfbe97ad4d"
+ },
+ "oasst_sample": {
+  "updated": "2026-10-16T15:17:12",
+  "dataset": "OpenAssistant/oasst1",
+  "revision": "fdf72ae0827c1cda404aff25b6603abec9e3399b",
+  "pool": 15427,
+  "sampled": 5000,
+  "seed": 42,
+  "sha256": "ba1ea2c7a03ff640cdd3d70567fe3f96d0570d3f7b147803efc696db534adb8e"
+ }
+}

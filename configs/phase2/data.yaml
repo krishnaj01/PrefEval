@@ -1,0 +1,21 @@
+# Phase 2 data configuration (read by phase2.build_data / pseudolabel / splits / llm_baseline).
+seed: 42                       # global seed: OASST sampling, fold assignment, audit sample, LLM-baseline sample
+n_folds: 5                     # topic-level cross-validation: 20 topics -> 5 folds x 4 topics
+
+labeler:                       # local LLM used for pseudo-labels (key from configs/phase1/models.yaml)
+  model: llama3-8b
+  num_ctx: 8192
+
+oasst:
+  dataset: OpenAssistant/oasst1
+  revision: null               # null = latest; the resolved commit hash is recorded in data/phase2/manifest.json
+  lang: en
+  n_samples: 5000              # prompter (user) turns sampled with `seed`
+  max_chars: 2000              # skip very long messages (code dumps etc.)
+
+audit:
+  n_per_stratum: 40            # 5 strata (persona +/-, persona LLM-vs-overlap disagreements, oasst +/-) -> 200 rows
+
+llm_baseline:
+  model: llama3-8b
+  n_samples: 2000              # fixed sample of labelled PrefEval test rows

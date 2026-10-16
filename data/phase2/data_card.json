@@ -1,0 +1,127 @@
+{
+ "rows": 3580,
+ "positives": 2009,
+ "negatives": 1571,
+ "by_source_label": {
+  "choice_query|0": 577,
+  "choice_selection|1": 991,
+  "explicit_pref|1": 988,
+  "persona_pref|1": 30,
+  "question|0": 994
+ },
+ "by_label_origin": {
+  "gold": 3580
+ },
+ "excluded": {
+  "persona_turn_unlabelled": 5177
+ },
+ "audit_overrides_changed": 0,
+ "per_topic": {
+  "travel_transportation": {
+   "n": 169,
+   "positive_rate": 0.5562
+  },
+  "shop_motors": {
+   "n": 163,
+   "positive_rate": 0.5644
+  },
+  "lifestyle_beauty": {
+   "n": 193,
+   "positive_rate": 0.544
+  },
+  "travel_restaurant": {
+   "n": 199,
+   "positive_rate": 0.5729
+  },
+  "shop_fashion": {
+   "n": 209,
+   "positive_rate": 0.5359
+  },
+  "entertain_shows": {
+   "n": 219,
+   "positive_rate": 0.5616
+  },
+  "pet_ownership": {
+   "n": 151,
+   "positive_rate": 0.5762
+  },
+  "lifestyle_fit": {
+   "n": 188,
+   "positive_rate": 0.5585
+  },
+  "entertain_games": {
+   "n": 176,
+   "positive_rate": 0.5682
+  },
+  "shop_home": {
+   "n": 217,
+   "positive_rate": 0.5207
+  },
+  "lifestyle_health": {
+   "n": 182,
+   "positive_rate": 0.544
+  },
+  "travel_activities": {
+   "n": 203,
+   "positive_rate": 0.5862
+  },
+  "education_learning_styles": {
+   "n": 107,
+   "positive_rate": 0.5794
+  },
+  "entertain_music_book": {
+   "n": 203,
+   "positive_rate": 0.5468
+  },
+  "professional_work_location_style": {
+   "n": 132,
+   "positive_rate": 0.553
+  },
+  "education_resources": {
+   "n": 181,
+   "positive_rate": 0.5801
+  },
+  "lifestyle_dietary": {
+   "n": 182,
+   "positive_rate": 0.6099
+  },
+  "shop_technology": {
+   "n": 133,
+   "positive_rate": 0.5263
+  },
+  "travel_hotel": {
+   "n": 199,
+   "positive_rate": 0.5528
+  },
+  "entertain_sports": {
+   "n": 174,
+   "positive_rate": 0.5977
+  }
+ },
+ "topic_positive_rate_min_max": [
+  0.5207,
+  0.6099
+ ],
+ "per_fold": {
+  "0": {
+   "n": 734,
+   "pos": 412
+  },
+  "1": {
+   "n": 800,
+   "pos": 439
+  },
+  "2": {
+   "n": 573,
+   "pos": 318
+  },
+  "3": {
+   "n": 741,
+   "pos": 427
+  },
+  "4": {
+   "n": 732,
+   "pos": 413
+  }
+ }
+}

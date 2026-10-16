@@ -1,0 +1,14 @@
+name: modernbert
+hf_id: answerdotai/ModernBERT-base
+revision: null
+kind: encoder
+max_len: 256
+lr: 5.0e-5
+epochs: 4
+batch_size: 32
+grad_accum: 1
+weight_decay: 0.01
+warmup_ratio: 0.1
+precision: bf16
+evals_per_epoch: 4
+early_stopping_patience: 4
