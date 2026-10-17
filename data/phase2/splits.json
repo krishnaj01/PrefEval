@@ -43,9 +43,9 @@
    ],
    "val_fold": 1,
    "test_fold": 0,
-   "n_train": 2046,
-   "n_val": 800,
-   "n_test": 734
+   "n_train": 7569,
+   "n_val": 2788,
+   "n_test": 2593
   },
   "1": {
    "train_folds": [
@@ -55,9 +55,9 @@
    ],
    "val_fold": 2,
    "test_fold": 1,
-   "n_train": 2207,
-   "n_val": 573,
-   "n_test": 800
+   "n_train": 7914,
+   "n_val": 2248,
+   "n_test": 2788
   },
   "2": {
    "train_folds": [
@@ -67,9 +67,9 @@
    ],
    "val_fold": 3,
    "test_fold": 2,
-   "n_train": 2266,
-   "n_val": 741,
-   "n_test": 573
+   "n_train": 8012,
+   "n_val": 2690,
+   "n_test": 2248
   },
   "3": {
    "train_folds": [
@@ -79,9 +79,9 @@
    ],
    "val_fold": 4,
    "test_fold": 3,
-   "n_train": 2107,
-   "n_val": 732,
-   "n_test": 741
+   "n_train": 7629,
+   "n_val": 2631,
+   "n_test": 2690
   },
   "4": {
    "train_folds": [
@@ -91,11 +91,11 @@
    ],
    "val_fold": 0,
    "test_fold": 4,
-   "n_train": 2114,
-   "n_val": 734,
-   "n_test": 732
+   "n_train": 7726,
+   "n_val": 2593,
+   "n_test": 2631
   }
  },
- "dataset_sha256": "fe1a26998b70111980cac8acf4680fdeb14a1d8effc3ffae173c0bed62ca457e",
- "rows": 3580
+ "dataset_sha256": "80b5ade52a7bea918c907a1c1034a30e4fab40af7e3d996457a37a791e7aad08",
+ "rows": 12950
 }

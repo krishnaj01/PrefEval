@@ -46,6 +46,28 @@ reproducible pipeline. Branch: `phase2-classifier`. Environment: conda env `pref
   - Agreement and Cohen's κ are reported.
   - Audited labels override pseudo-labels (`label_origin = audited`).
 
+### 2.1b Annotation guidelines (used for the manual audit)
+**Always label the `text` column**, which is the message the classifier sees. `reference_preference` (persona rows only) is a hint
+about which preference is hidden in that user's conversation. It is never itself labelled.
+
+**Test question:** *if a good assistant remembered this message, would it change what it recommends to this user later, in a different conversation?* Yes → 1, no → 0.
+
+Decide in order:
+1. Is it **about the user personally** (their diet, health, budget, tastes, values, abilities, dislikes)? If not → 0.
+2. Is it **lasting**, not a one-off for the current request? If not → 0.
+3. Would it **change future recommendations**? Then → 1, whether stated directly or implied by a choice or passing remark.
+
+| 1 | 0 |
+|---|---|
+| "I'm vegan…" · "I don't like burgers…" · "I'll take the Westin, the others are too lively for my taste" · "I don't have much money to spare" · "As someone with a nut allergy…" | plain requests ("good hotels in Rome?") · task requirements ("use Python 3.7", "make it 500 words") · feedback on the current output ("less galaxy-themed") · statements about other people · thanks / small talk · role-play / fiction · quizzes, pasted code, error messages |
+
+Edge cases:
+- **One-off vs lasting:** "quiet place tonight" → 0; "I always prefer quiet places" → 1.
+- **A request containing a preference** → 1.
+- **Persona rows:** 1 only if this message itself reveals the reference preference (or another clear personal preference). Other turns of the same chat, including job or project details → 0.
+- **Unsure:** give your best guess (tie-breaker: "would I want an assistant to remember this about me?"; if still torn, lean to 0) and write `unsure` in `notes`. The audit report shows agreement with and without unsure rows.
+- Decide **before** looking at `pseudo_label`.
+
 ### 2.2 Row schema (`data/phase2/*.jsonl`)
 | Field | Meaning |
 |---|---|

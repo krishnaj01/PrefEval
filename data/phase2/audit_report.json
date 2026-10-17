@@ -1,0 +1,45 @@
+{
+ "overall": {
+  "n": 199,
+  "agreement": 0.7387,
+  "cohen_kappa": 0.4754,
+  "pseudo1_human0": 24,
+  "pseudo0_human1": 28
+ },
+ "oasst_neg": {
+  "n": 40,
+  "agreement": 1.0,
+  "cohen_kappa": 1.0,
+  "pseudo1_human0": 0,
+  "pseudo0_human1": 0
+ },
+ "oasst_pos": {
+  "n": 40,
+  "agreement": 0.4,
+  "cohen_kappa": 0.0,
+  "pseudo1_human0": 24,
+  "pseudo0_human1": 0
+ },
+ "persona_llm_vs_overlap_disagree": {
+  "n": 40,
+  "agreement": 0.475,
+  "cohen_kappa": 0.1732,
+  "pseudo1_human0": 0,
+  "pseudo0_human1": 21
+ },
+ "persona_neg": {
+  "n": 39,
+  "agreement": 0.8205,
+  "cohen_kappa": 0.0,
+  "pseudo1_human0": 0,
+  "pseudo0_human1": 7
+ },
+ "persona_pos": {
+  "n": 40,
+  "agreement": 1.0,
+  "cohen_kappa": 1.0,
+  "pseudo1_human0": 0,
+  "pseudo0_human1": 0
+ },
+ "n_unsure": 0
+}

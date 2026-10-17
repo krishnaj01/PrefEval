@@ -20,6 +20,7 @@ from phase2.common import MODEL_NAMES
 STAGES = {
     "data": [["phase2.build_data"]],
     "pseudo": [["phase2.pseudolabel", "--what", "persona"], ["phase2.pseudolabel", "--what", "oasst"],
+               ["phase2.pseudolabel", "--what", "refine"], ["phase2.pseudolabel", "--what", "refine-persona-strict"],
                ["phase2.pseudolabel", "--what", "lmsys"]],
     "splits": [["phase2.splits"]],
     "train": [["phase2.train", "--config", f"configs/phase2/{m}.yaml", "--fold", "all"] for m in MODEL_NAMES],

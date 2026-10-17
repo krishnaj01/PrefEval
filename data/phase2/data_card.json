@@ -1,127 +1,188 @@
 {
- "rows": 3580,
- "positives": 2009,
- "negatives": 1571,
+ "rows": 12950,
+ "positives": 3143,
+ "negatives": 9807,
  "by_source_label": {
   "choice_query|0": 577,
   "choice_selection|1": 991,
   "explicit_pref|1": 988,
+  "oasst|0": 4881,
+  "oasst|1": 114,
   "persona_pref|1": 30,
+  "persona_turn|0": 3355,
+  "persona_turn|1": 1020,
   "question|0": 994
  },
  "by_label_origin": {
+  "pseudo": 9188,
+  "audited": 182,
   "gold": 3580
  },
  "excluded": {
-  "persona_turn_unlabelled": 5177
+  "persona_turn_ambiguous": 791,
+  "persona_turn_unlabelled": 11,
+  "oasst_unlabelled": 5
  },
- "audit_overrides_changed": 0,
+ "audit_overrides_changed": 17,
+ "audit_agreement_of_refined_labels": {
+  "overall": {
+   "n_audited": 199,
+   "n_still_in_dataset": 182,
+   "agreement": 0.9066
+  },
+  "oasst_neg": {
+   "n_audited": 40,
+   "n_still_in_dataset": 40,
+   "agreement": 1.0
+  },
+  "oasst_pos": {
+   "n_audited": 40,
+   "n_still_in_dataset": 40,
+   "agreement": 0.675
+  },
+  "persona_llm_vs_overlap_disagree": {
+   "n_audited": 40,
+   "n_still_in_dataset": 33,
+   "agreement": 0.9091
+  },
+  "persona_neg": {
+   "n_audited": 39,
+   "n_still_in_dataset": 29,
+   "agreement": 0.9655
+  },
+  "persona_pos": {
+   "n_audited": 40,
+   "n_still_in_dataset": 40,
+   "agreement": 1.0
+  }
+ },
+ "persona_negative_filter": "strict",
+ "persona_filter_comparison": {
+  "generic": {
+   "excluded_total": 1384,
+   "checked_total": 4144,
+   "audited_flagged": 18,
+   "flag_precision": 0.278,
+   "audited_kept": 21,
+   "kept_clean_rate": 0.905,
+   "missed_preferences_in_kept": 2
+  },
+  "strict": {
+   "excluded_total": 791,
+   "checked_total": 4144,
+   "audited_flagged": 10,
+   "flag_precision": 0.6,
+   "audited_kept": 29,
+   "kept_clean_rate": 0.966,
+   "missed_preferences_in_kept": 1
+  }
+ },
  "per_topic": {
   "travel_transportation": {
-   "n": 169,
-   "positive_rate": 0.5562
+   "n": 391,
+   "positive_rate": 0.3581
   },
   "shop_motors": {
-   "n": 163,
-   "positive_rate": 0.5644
+   "n": 369,
+   "positive_rate": 0.3713
   },
   "lifestyle_beauty": {
-   "n": 193,
-   "positive_rate": 0.544
+   "n": 446,
+   "positive_rate": 0.3543
   },
   "travel_restaurant": {
-   "n": 199,
-   "positive_rate": 0.5729
+   "n": 451,
+   "positive_rate": 0.3814
   },
   "shop_fashion": {
-   "n": 209,
-   "positive_rate": 0.5359
+   "n": 443,
+   "positive_rate": 0.377
   },
   "entertain_shows": {
-   "n": 219,
-   "positive_rate": 0.5616
+   "n": 474,
+   "positive_rate": 0.3924
   },
   "pet_ownership": {
-   "n": 151,
-   "positive_rate": 0.5762
+   "n": 324,
+   "positive_rate": 0.3981
   },
   "lifestyle_fit": {
-   "n": 188,
-   "positive_rate": 0.5585
+   "n": 420,
+   "positive_rate": 0.3786
   },
   "entertain_games": {
-   "n": 176,
-   "positive_rate": 0.5682
+   "n": 389,
+   "positive_rate": 0.3882
   },
   "shop_home": {
-   "n": 217,
-   "positive_rate": 0.5207
+   "n": 477,
+   "positive_rate": 0.3543
   },
   "lifestyle_health": {
-   "n": 182,
-   "positive_rate": 0.544
+   "n": 375,
+   "positive_rate": 0.4
   },
   "travel_activities": {
-   "n": 203,
-   "positive_rate": 0.5862
+   "n": 453,
+   "positive_rate": 0.3996
   },
   "education_learning_styles": {
-   "n": 107,
-   "positive_rate": 0.5794
+   "n": 243,
+   "positive_rate": 0.3868
   },
   "entertain_music_book": {
-   "n": 203,
-   "positive_rate": 0.5468
+   "n": 456,
+   "positive_rate": 0.3684
   },
   "professional_work_location_style": {
-   "n": 132,
-   "positive_rate": 0.553
+   "n": 297,
+   "positive_rate": 0.367
   },
   "education_resources": {
-   "n": 181,
-   "positive_rate": 0.5801
+   "n": 427,
+   "positive_rate": 0.3817
   },
   "lifestyle_dietary": {
-   "n": 182,
-   "positive_rate": 0.6099
+   "n": 425,
+   "positive_rate": 0.3953
   },
   "shop_technology": {
-   "n": 133,
-   "positive_rate": 0.5263
+   "n": 281,
+   "positive_rate": 0.3808
   },
   "travel_hotel": {
-   "n": 199,
-   "positive_rate": 0.5528
+   "n": 434,
+   "positive_rate": 0.3779
   },
   "entertain_sports": {
-   "n": 174,
-   "positive_rate": 0.5977
+   "n": 380,
+   "positive_rate": 0.4132
   }
  },
  "topic_positive_rate_min_max": [
-  0.5207,
-  0.6099
+  0.3543,
+  0.4132
  ],
  "per_fold": {
   "0": {
-   "n": 734,
-   "pos": 412
+   "n": 2593,
+   "pos": 645
   },
   "1": {
-   "n": 800,
-   "pos": 439
+   "n": 2788,
+   "pos": 681
   },
   "2": {
-   "n": 573,
-   "pos": 318
+   "n": 2248,
+   "pos": 503
   },
   "3": {
-   "n": 741,
-   "pos": 427
+   "n": 2690,
+   "pos": 663
   },
   "4": {
-   "n": 732,
-   "pos": 413
+   "n": 2631,
+   "pos": 651
   }
  }
 }

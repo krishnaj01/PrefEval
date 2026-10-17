@@ -31,6 +31,12 @@ from phase2.common import (AUDIT_CSV, AUDIT_REPORT, DATASET_DIR, LMSYS_OOD, OASS
 PERSONA_CACHE = os.path.join(PSEUDO_DIR, "persona.jsonl")
 OASST_CACHE = os.path.join(PSEUDO_DIR, "oasst.jsonl")
 LMSYS_CACHE = os.path.join(PSEUDO_DIR, "lmsys.jsonl")
+# refinement caches (added after the manual audit showed noisy OASST positives / persona negatives)
+OASST_STRICT_CACHE = os.path.join(PSEUDO_DIR, "oasst_strict.jsonl")     # stricter re-check of OASST "yes" labels
+PERSONA_CHECK_CACHE = os.path.join(PSEUDO_DIR, "persona_check.jsonl")   # generic yes/no on persona negatives
+PERSONA_CHECK_STRICT_CACHE = os.path.join(PSEUDO_DIR, "persona_check_strict.jsonl")   # strict prompt on the same turns
+PERSONA_FILTERS = {"generic": PERSONA_CHECK_CACHE, "strict": PERSONA_CHECK_STRICT_CACHE}
+PERSONA_OVERLAP_MIN = 2      # overlap pick counts as a positive turn only with >= 2 shared content words
 
 # ----------------------------------------------------------------------------- prompts (hashed into every cache row)
 DEFINITION = ("A message STATES A PREFERENCE if it reveals a personal preference, like, dislike, restriction or constraint "
@@ -64,6 +70,15 @@ def overlap_turn(preference, turns):
     best = max(range(len(scores)), key=lambda i: scores[i])
     return (best if scores[best] > 0 else None), scores[best]
 
+
+STRICT_TEMPLATE = ("Decide whether the message reveals a LASTING PERSONAL preference or constraint of the USER THEMSELVES - "
+                   "e.g. their diet, allergy, health, budget, accessibility needs, tastes, likes and dislikes, or values - that an "
+                   "assistant should remember and apply to FUTURE, DIFFERENT requests.\n\n"
+                   "Answer NO if the message only contains: requirements for the current task (programming language, length, "
+                   "format, style, tools), feedback on the assistant's previous answer, role-play or fiction instructions, "
+                   "statements about other people, questions or requests without a personal preference, or one-off wishes.\n\n"
+                   "Message:\n\"\"\"\n{text}\n\"\"\"\n\nDoes this message reveal a lasting personal preference or "
+                   "constraint of the user? Answer YES or NO only.")
 
 SYSTEM = "You are a careful annotator. Follow the instructions exactly and answer with the requested format only."
 
@@ -186,6 +201,58 @@ def label_yesno(rows, cache, name):
                                             "model": info})
 
 
+# ----------------------------------------------------------------------------- refinement (post-audit)
+def persona_negative_candidates():
+    """Persona turns that neither the LLM nor the overlap check picked (candidate negatives)."""
+    persona = {r["key"]: r for r in read_jsonl(PERSONA_CACHE)}
+    cand = []
+    for r in read_jsonl(PREFEVAL_TURNS):
+        if r["source"] != "persona_turn":
+            continue
+        p = persona.get(f"{r['topic']}/{r['task_id']}")
+        if p is None or p["turn_idx"] is None:
+            continue
+        ov = p.get("overlap_idx") if (p.get("overlap_score") or 0) >= PERSONA_OVERLAP_MIN else None
+        if r["turn_idx"] not in (p["turn_idx"], ov):
+            cand.append(r)
+    return cand
+
+
+def _check(rows, cache, template, desc, backend, info):
+    done = {r["uid"] for r in read_jsonl(cache)}
+    for r in tqdm([r for r in rows if r["uid"] not in done], desc=desc):
+        raw, sec = ask(backend, template.format(text=r["text"][:4000]), 3)
+        append_jsonl(cache, {"uid": r["uid"], "label": parse_yesno(raw), "raw": raw, "seconds": sec,
+                             "prompt_sha": sha256_text(template + SYSTEM), "model": info["tag"], "digest": info["digest"]})
+
+
+def refine():
+    """(a) Stricter re-check of OASST rows the LLM labelled YES (rejected ones become hard negatives).
+    (b) Generic YES/NO check on persona candidate negatives (a YES excludes the turn as ambiguous)."""
+    backend, info = make_backend()
+    oasst_yes = {r["uid"] for r in read_jsonl(OASST_CACHE) if r["label"] == 1}
+    _check([r for r in read_jsonl(OASST_RAW) if r["uid"] in oasst_yes], OASST_STRICT_CACHE, STRICT_TEMPLATE,
+           "oasst-strict", backend, info)
+    _check(persona_negative_candidates(), PERSONA_CHECK_CACHE, YESNO_TEMPLATE, "persona-neg-check", backend, info)
+    st = collections.Counter(r["label"] for r in read_jsonl(OASST_STRICT_CACHE))
+    pc = collections.Counter(r["label"] for r in read_jsonl(PERSONA_CHECK_CACHE))
+    print(f"OASST strict re-check of {sum(st.values())} YES rows: confirmed={st[1]} rejected={st[0]} unparseable={st[None]}")
+    print(f"persona negatives checked (generic): {sum(pc.values())}: flagged={pc[1]}, kept={pc[0]}")
+    update_data_manifest("pseudo_refine", {"oasst_strict": {"sha256": sha256_file(OASST_STRICT_CACHE), **{str(k): v for k, v in st.items()}},
+                                           "persona_check": {"sha256": sha256_file(PERSONA_CHECK_CACHE), **{str(k): v for k, v in pc.items()}},
+                                           "persona_overlap_min": PERSONA_OVERLAP_MIN, "model": info})
+
+
+def refine_persona_strict():
+    """Same candidate persona negatives, checked with STRICT_TEMPLATE (lasting personal preference only)."""
+    backend, info = make_backend()
+    _check(persona_negative_candidates(), PERSONA_CHECK_STRICT_CACHE, STRICT_TEMPLATE, "persona-neg-strict", backend, info)
+    pc = collections.Counter(r["label"] for r in read_jsonl(PERSONA_CHECK_STRICT_CACHE))
+    print(f"persona negatives checked (strict): {sum(pc.values())}: flagged={pc[1]}, kept={pc[0]}, unparseable={pc[None]}")
+    update_data_manifest("pseudo_refine_persona_strict", {"sha256": sha256_file(PERSONA_CHECK_STRICT_CACHE),
+                                                          **{str(k): v for k, v in pc.items()}, "model": info})
+
+
 # ----------------------------------------------------------------------------- audit
 AUDIT_FIELDS = ["audit_id", "stratum", "uid", "reference_preference", "text", "pseudo_label", "your_label", "notes"]
 
@@ -259,12 +326,19 @@ def audit_report():
         return {"n": n, "agreement": round(agree, 4), "cohen_kappa": round(kappa, 4),
                 "pseudo1_human0": sum(x == 1 and y == 0 for x, y in zip(a, b)),
                 "pseudo0_human1": sum(x == 0 and y == 1 for x, y in zip(a, b))}
+    sure = [r for r in rows if "unsure" not in r.get("notes", "").lower()]
     rep = {"overall": stats(rows)}
+    if len(sure) < len(rows):
+        rep["overall_excluding_unsure"] = stats(sure)
     for s in sorted({r["stratum"] for r in rows}):
         rep[s] = stats([r for r in rows if r["stratum"] == s])
+    rep["n_unsure"] = len(rows) - len(sure)
     with open(AUDIT_REPORT, "w") as f:
         json.dump(rep, f, indent=1)
     for k, v in rep.items():
+        if not isinstance(v, dict):
+            print(f"{k}: {v}")
+            continue
         print(f"{k:12s} n={v['n']:3d} agreement={v['agreement']:.3f} kappa={v['cohen_kappa']:.3f} "
               f"(LLM yes/human no: {v['pseudo1_human0']}, LLM no/human yes: {v['pseudo0_human1']})")
     update_data_manifest("audit", {"csv_sha256": sha256_file(AUDIT_CSV), **rep["overall"]})
@@ -272,7 +346,7 @@ def audit_report():
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--what", choices=["persona", "oasst", "lmsys"])
+    ap.add_argument("--what", choices=["persona", "oasst", "lmsys", "refine", "refine-persona-strict"])
     ap.add_argument("--audit", action="store_true")
     ap.add_argument("--audit-report", action="store_true")
     a = ap.parse_args()
@@ -280,6 +354,10 @@ def main():
         label_persona()
     elif a.what == "oasst":
         label_yesno(sample_oasst(), OASST_CACHE, "oasst")
+    elif a.what == "refine":
+        refine()
+    elif a.what == "refine-persona-strict":
+        refine_persona_strict()
     elif a.what == "lmsys":
         label_yesno(read_jsonl(LMSYS_OOD), LMSYS_CACHE, "lmsys")
     elif a.audit:

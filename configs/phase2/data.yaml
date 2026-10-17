@@ -19,3 +19,8 @@ audit:
 llm_baseline:
   model: llama3-8b
   n_samples: 2000              # fixed sample of labelled PrefEval test rows
+
+# Which LLM check removes ambiguous persona negatives (turns that also state some preference):
+#   generic = YESNO prompt (flags too many: 1,384 of 4,144), strict = lasting-personal-preference prompt, none = keep all.
+# `python -m phase2.splits` prints how each filter agrees with the manual audit.
+persona_negative_filter: strict

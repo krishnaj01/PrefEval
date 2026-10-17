@@ -21,10 +21,10 @@
   }
  },
  "splits": {
-  "updated": "2026-10-16T14:54:48",
-  "dataset_sha256": "fe1a26998b70111980cac8acf4680fdeb14a1d8effc3ffae173c0bed62ca457e",
-  "rows": 3580,
-  "splits_sha256": "ec2241ff483e58c3fbb65effe32d974ad662e08a5c22b1f90b397dbfbe97ad4d"
+  "updated": "2026-10-17T17:26:58",
+  "dataset_sha256": "80b5ade52a7bea918c907a1c1034a30e4fab40af7e3d996457a37a791e7aad08",
+  "rows": 12950,
+  "splits_sha256": "463dac47a2e797f9c209a1231a91ac12c50c07a177f80ffd81aab0524681e29e"
  },
  "oasst_sample": {
   "updated": "2026-10-16T15:17:12",
@@ -98,6 +98,65 @@
   "yes": 13,
   "no": 303,
   "unparseable": 0,
+  "model": {
+   "tag": "llama3:8b-instruct-q8_0",
+   "digest": "1b8e49cece7fb21deb006f8ced45ce18c54010941dbdf25fb37ecb3cc40dc798",
+   "details": {
+    "parent_model": "",
+    "format": "gguf",
+    "family": "llama",
+    "families": [
+     "llama"
+    ],
+    "parameter_size": "8.0B",
+    "quantization_level": "Q8_0"
+   },
+   "modified_at": "2026-10-02T15:43:53.440819218+05:30"
+  }
+ },
+ "audit": {
+  "updated": "2026-10-17T16:59:05",
+  "csv_sha256": "784d6dc5593b009858f919332791049b04a591aca1cea904873577852e0804a6",
+  "n": 199,
+  "agreement": 0.7387,
+  "cohen_kappa": 0.4754,
+  "pseudo1_human0": 24,
+  "pseudo0_human1": 28
+ },
+ "pseudo_refine": {
+  "updated": "2026-10-17T17:13:28",
+  "oasst_strict": {
+   "sha256": "4a3790ef5d5b037ef430211f3c261fbd617be348700ac10afeb252cf4f00183a",
+   "1": 115,
+   "0": 174
+  },
+  "persona_check": {
+   "sha256": "ac8b4c4341acc9cf931ccba1660d31e482695b291262f113d34f9ac73739721e",
+   "0": 2760,
+   "1": 1384
+  },
+  "persona_overlap_min": 2,
+  "model": {
+   "tag": "llama3:8b-instruct-q8_0",
+   "digest": "1b8e49cece7fb21deb006f8ced45ce18c54010941dbdf25fb37ecb3cc40dc798",
+   "details": {
+    "parent_model": "",
+    "format": "gguf",
+    "family": "llama",
+    "families": [
+     "llama"
+    ],
+    "parameter_size": "8.0B",
+    "quantization_level": "Q8_0"
+   },
+   "modified_at": "2026-10-02T15:43:53.440819218+05:30"
+  }
+ },
+ "pseudo_refine_persona_strict": {
+  "updated": "2026-10-17T17:26:49",
+  "sha256": "48d8569df5dba4cdcfb33bb02ee0b7b76ed0c4f5242e9ddab55729ec87573ffa",
+  "0": 3353,
+  "1": 791,
   "model": {
    "tag": "llama3:8b-instruct-q8_0",
    "digest": "1b8e49cece7fb21deb006f8ced45ce18c54010941dbdf25fb37ecb3cc40dc798",
