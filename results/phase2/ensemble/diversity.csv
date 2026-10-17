@@ -1,0 +1,7 @@
+model_a,model_b,disagreement,error_correlation,yules_q,both_wrong,only_a_wrong,only_b_wrong
+distilbert,modernbert,0.0086,0.6956,0.9963,129,64,47
+distilbert,tinyllama,0.0080,0.7051,0.9969,125,68,36
+distilbert,qwen3,0.0085,0.6799,0.9966,116,77,33
+modernbert,tinyllama,0.0075,0.7091,0.9970,120,56,41
+modernbert,qwen3,0.0075,0.7003,0.9970,114,62,35
+tinyllama,qwen3,0.0059,0.7525,0.9981,117,44,32
