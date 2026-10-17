@@ -34,5 +34,84 @@
   "sampled": 5000,
   "seed": 42,
   "sha256": "ba1ea2c7a03ff640cdd3d70567fe3f96d0570d3f7b147803efc696db534adb8e"
+ },
+ "pseudo_persona": {
+  "updated": "2026-10-16T15:50:09",
+  "cache": "data/phase2/pseudo/persona.jsonl",
+  "sha256": "199def237e756d7a6dfddfa3687b3fce0f7b222812fa98a377749e90c77aabe4",
+  "dialogues": 1000,
+  "found": 998,
+  "overlap_agreement": 0.953,
+  "llm_turn_distribution": {
+   "2": 239,
+   "1": 659,
+   "3": 44,
+   "4": 21,
+   "0": 33,
+   "5": 2
+  },
+  "model": {
+   "tag": "llama3:8b-instruct-q8_0",
+   "digest": "1b8e49cece7fb21deb006f8ced45ce18c54010941dbdf25fb37ecb3cc40dc798",
+   "details": {
+    "parent_model": "",
+    "format": "gguf",
+    "family": "llama",
+    "families": [
+     "llama"
+    ],
+    "parameter_size": "8.0B",
+    "quantization_level": "Q8_0"
+   },
+   "modified_at": "2026-10-02T15:43:53.440819218+05:30"
+  }
+ },
+ "pseudo_oasst": {
+  "updated": "2026-10-16T16:00:52",
+  "cache": "data/phase2/pseudo/oasst.jsonl",
+  "sha256": "06f36266a7305739169cbcd5355a64dab4b92494b855da12649290e7e1d478cf",
+  "rows": 5000,
+  "yes": 289,
+  "no": 4706,
+  "unparseable": 5,
+  "model": {
+   "tag": "llama3:8b-instruct-q8_0",
+   "digest": "1b8e49cece7fb21deb006f8ced45ce18c54010941dbdf25fb37ecb3cc40dc798",
+   "details": {
+    "parent_model": "",
+    "format": "gguf",
+    "family": "llama",
+    "families": [
+     "llama"
+    ],
+    "parameter_size": "8.0B",
+    "quantization_level": "Q8_0"
+   },
+   "modified_at": "2026-10-02T15:43:53.440819218+05:30"
+  }
+ },
+ "pseudo_lmsys": {
+  "updated": "2026-10-16T16:01:41",
+  "cache": "data/phase2/pseudo/lmsys.jsonl",
+  "sha256": "ff2607e4f5b83ac597b29d36730b62fb70ef6af192060b2426361a48a67f3bb7",
+  "rows": 316,
+  "yes": 13,
+  "no": 303,
+  "unparseable": 0,
+  "model": {
+   "tag": "llama3:8b-instruct-q8_0",
+   "digest": "1b8e49cece7fb21deb006f8ced45ce18c54010941dbdf25fb37ecb3cc40dc798",
+   "details": {
+    "parent_model": "",
+    "format": "gguf",
+    "family": "llama",
+    "families": [
+     "llama"
+    ],
+    "parameter_size": "8.0B",
+    "quantization_level": "Q8_0"
+   },
+   "modified_at": "2026-10-02T15:43:53.440819218+05:30"
+  }
  }
 }
