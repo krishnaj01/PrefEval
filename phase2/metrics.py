@@ -5,8 +5,8 @@ from sklearn.metrics import (accuracy_score, average_precision_score, confusion_
                              recall_score, roc_auc_score)
 
 
-def tune_threshold(y, p):
-    """Threshold maximising F1 on (validation) labels y and probabilities p. Ties -> the value closest to 0.5."""
+def _tune_threshold_slow(y, p):
+    """Reference implementation (kept for verification): try every distinct probability as the threshold."""
     y, p = np.asarray(y), np.asarray(p, dtype=float)
     cands = np.unique(np.concatenate([p, [0.5]]))
     best, best_t = -1.0, 0.5
@@ -15,6 +15,24 @@ def tune_threshold(y, p):
         if f > best + 1e-12 or (abs(f - best) <= 1e-12 and abs(t - 0.5) < abs(best_t - 0.5)):
             best, best_t = f, float(t)
     return best_t
+
+
+def tune_threshold(y, p):
+    """Threshold maximising F1 on (validation) labels y and probabilities p; ties -> the value closest to 0.5.
+    Vectorised: identical result to `_tune_threshold_slow`, computed in O(n log n) instead of O(n^2)."""
+    y, p = np.asarray(y).astype(int), np.asarray(p, dtype=float)
+    cands = np.unique(np.concatenate([p, [0.5]]))                 # ascending
+    order = np.sort(p)
+    pos_sorted = np.sort(p[y == 1])
+    n_pos = int(y.sum())
+    # predictions are p >= t: count of positives / all rows with p >= t
+    tp = n_pos - np.searchsorted(pos_sorted, cands, side="left")
+    pred_pos = len(p) - np.searchsorted(order, cands, side="left")
+    denom = pred_pos + n_pos
+    f1 = np.where(denom > 0, 2 * tp / np.maximum(denom, 1), 0.0)
+    best = f1.max()
+    ties = np.where(f1 >= best - 1e-12)[0]
+    return float(cands[ties[np.argmin(np.abs(cands[ties] - 0.5))]])
 
 
 def ece(y, p, n_bins=10):

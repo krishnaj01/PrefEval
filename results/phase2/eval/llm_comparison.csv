@@ -1,0 +1,6 @@
+model,n,accuracy,precision,recall,f1,median_latency_ms
+distilbert,2000,0.9925,0.9908,0.9895,0.9901,1.4045
+modernbert,2000,0.9940,0.9960,0.9881,0.9921,6.5325
+tinyllama,2000,0.9945,0.9934,0.9921,0.9927,17.1303
+qwen3,2000,0.9955,0.9960,0.9921,0.9941,25.1237
+llm_baseline (Llama-3-8B zero-shot),2000,0.8960,0.7867,0.9960,0.8791,72.0000

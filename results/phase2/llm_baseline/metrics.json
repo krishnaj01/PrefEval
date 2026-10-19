@@ -1,0 +1,43 @@
+{
+ "model": "llm_baseline",
+ "llm": {
+  "tag": "llama3:8b-instruct-q8_0",
+  "digest": "1b8e49cece7fb21deb006f8ced45ce18c54010941dbdf25fb37ecb3cc40dc798",
+  "details": {
+   "parent_model": "",
+   "format": "gguf",
+   "family": "llama",
+   "families": [
+    "llama"
+   ],
+   "parameter_size": "8.0B",
+   "quantization_level": "Q8_0"
+  },
+  "modified_at": "2026-10-02T15:43:53.440819218+05:30"
+ },
+ "n": 2000,
+ "unparseable": 0,
+ "metrics": {
+  "n": 2000,
+  "positives": 759,
+  "threshold": 0.5,
+  "accuracy": 0.896,
+  "precision": 0.7866805411030177,
+  "recall": 0.9960474308300395,
+  "f1": 0.8790697674418605,
+  "f1_macro": 0.893920848633211,
+  "tn": 1036,
+  "fp": 205,
+  "fn": 3,
+  "tp": 756,
+  "fpr": 0.1651893634165995,
+  "roc_auc": 0.91542903370672,
+  "pr_auc": 0.785071131849646,
+  "ece": 0.10400000000000001
+ },
+ "latency": {
+  "device": "cuda (Ollama)",
+  "median_ms": 72.0,
+  "mean_ms": 183.95700000000002
+ }
+}
