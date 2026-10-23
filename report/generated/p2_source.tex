@@ -1,0 +1,14 @@
+\begin{tabular}{llrrrr}
+\toprule
+Source & Metric & DistilBERT & ModernBERT & TinyLlama & Qwen3 \\
+\midrule
+Explicit preference & recall & 0.986 & 0.985 & 0.993 & 0.997 \\
+Choice selection (implicit) & recall & 0.999 & 0.998 & 0.999 & 0.997 \\
+Persona dialogue turn & recall & 0.970 & 0.973 & 0.975 & 0.980 \\
+Persona dialogue turn & false-pos. rate & 0.009 & 0.006 & 0.006 & 0.004 \\
+OpenAssistant message & recall & 0.158 & 0.193 & 0.211 & 0.263 \\
+OpenAssistant message & false-pos. rate & 0.004 & 0.004 & 0.003 & 0.005 \\
+Final question & false-pos. rate & 0.001 & 0.000 & 0.000 & 0.000 \\
+Choice initial query & false-pos. rate & 0.000 & 0.000 & 0.000 & 0.000 \\
+\bottomrule
+\end{tabular}

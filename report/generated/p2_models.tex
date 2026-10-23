@@ -1,0 +1,10 @@
+\begin{tabular}{lrrrrrrrrrr}
+\toprule
+Model & F1 & Prec. & Rec. & F1 std & AUC & ECE & OOD flags & ms/msg & Trainable & Train min \\
+\midrule
+DistilBERT & 0.969 & 0.983 & 0.955 & 0.007 & 0.994 & 0.008 & 0.4\% & 1.4 & 67M & 14 \\
+ModernBERT & 0.972 & 0.988 & 0.956 & 0.004 & 0.995 & 0.009 & 0.2\% & 6.5 & 150M & 32 \\
+TinyLlama-1.1B (LoRA) & 0.974 & 0.988 & 0.961 & 0.006 & 0.997 & 0.010 & 0.1\% & 17.1 & 13M & 91 \\
+Qwen3-1.7B (LoRA) & 0.976 & 0.988 & 0.965 & 0.006 & 0.997 & 0.009 & 1.5\% & 25.1 & 17M & 120 \\
+\bottomrule
+\end{tabular}

@@ -1,0 +1,13 @@
+\begin{tabular}{llrrrr}
+\toprule
+Rule & Members & F1 & Prec. & Rec. & ms (sum) \\
+\midrule
+Best soft & TinyLlama + Qwen3 & 0.977 & 0.990 & 0.965 & 42.3 \\
+Best hard & TinyLlama + Qwen3 & 0.977 & 0.989 & 0.965 & 42.3 \\
+Best stacking & DistilBERT + ModernBERT + TinyLlama + Qwen3 & 0.977 & 0.992 & 0.962 & 50.2 \\
+\midrule Single & DistilBERT & 0.969 & 0.983 & 0.955 & 1.4 \\
+Single & ModernBERT & 0.972 & 0.988 & 0.956 & 6.5 \\
+Single & TinyLlama & 0.974 & 0.988 & 0.961 & 17.1 \\
+Single & Qwen3 & 0.976 & 0.988 & 0.965 & 25.1 \\
+\bottomrule
+\end{tabular}
