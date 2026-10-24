@@ -15,3 +15,7 @@ archive/
 # Phase 2 model checkpoints (several GB; reproducible from configs + pinned revisions)
 models/
 results/phase2_smoke/
+
+# Phase 3: embedding caches (reproducible from configs/phase3 + pinned revisions); smoke outputs
+data/phase3/emb/
+results/phase3_smoke/

@@ -1,0 +1,8 @@
+# Retrieval benchmark settings (phase3.retrieve / phase3.retrieval_eval)
+forms: [explicit, implicit-choice]
+inter_turns: [3, 8, 28, 48, 68]     # paper rows 1k, 3k, 10k, 16k, 23k (0 is skipped: RAG undefined, pool too small)
+reply_llms: [llama3-8b, mistral7b]  # explicit pools contain the LLM's own reply to the preference (from Phase 1 results)
+top_k_saved: 10                     # ranked ids stored per question (later RAG / memory steps use the top-k)
+recall_ks: [1, 3, 5, 10]
+encode_batch_size: 64
+latency_samples: 200                # single-message encodes timed (batch 1, GPU) after 10 warm-up calls

@@ -1,0 +1,12 @@
+# Phase 3 dependencies, installed on top of requirements-phase2.txt in the `prefeval-p2` env:
+#   conda activate prefeval-p2 && pip install -r requirements-phase2.txt -r requirements-phase3.txt
+sentence-transformers>=5.0   # embedding models with their own query/document prompts (bge, e5, mxbai, embeddinggemma)
+# EmbeddingGemma-2 is multimodal: sentence-transformers loads its image/video processor even for text, which needs
+# torchvision. Install the build matching torch 2.14.1+cu130 (this does not change torch):
+#   pip install torchvision==0.29.1 --index-url https://download.pytorch.org/whl/cu130
+
+# Exact versions used for the Phase 3 results (2026-10-24, RTX 3060, CUDA 13.0):
+# sentence-transformers==6.2.0
+# huggingface_hub==2.2.0
+# torchvision==0.29.1+cu130
+# (torch, transformers, pandas, matplotlib, tabulate: as pinned in requirements-phase2.txt)

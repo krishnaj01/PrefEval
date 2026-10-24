@@ -16,6 +16,8 @@ and the paper is `8673_Do_LLMs_Recognize_Your_Pr.pdf`. It runs in three phases:
 - `phase1/` holds the active Phase 1 pipeline (see `phase1/CLAUDE.md`).
 - `configs/phase1/` holds `models.yaml` and one YAML per experiment tier.
 - `results/phase1/` holds Phase 1 baseline results, which are committed. **Never write Phase 2/3 outputs here.**
+- `phase3/`, `configs/phase3/`, `results/phase3/` and `docs/PHASE3.md` hold Phase 3 (branch `phase3-memory`; see `phase3/CLAUDE.md`).
+  It reads Phase 1/2 outputs but never writes to them.
 - `logs/` holds verbose run logs and is git-ignored.
 - `classification_task/`, `generation_task/`, `utils/`, `run_experiments.py`, `*.patch` are the upstream code plus
   the user's earlier (broken) local-vLLM attempt. They are **not used** by Phase 1. Do not modify or delete them without asking.

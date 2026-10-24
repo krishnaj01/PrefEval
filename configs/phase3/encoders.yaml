@@ -1,0 +1,41 @@
+# Phase 3 retrieval encoders. They run locally (PyTorch + sentence-transformers on the GPU), not through Ollama.
+# Prompts are each model's OFFICIAL ones:
+#  - read from the model's config_sentence_transformers.json where it ships one (mxbai, embeddinggemma-2);
+#  - otherwise taken from its model card (bge: query instruction for retrieval; e5: "query: " / "passage: " prefixes).
+# revision: exact Hugging Face commit (pinned 2026-10-24), so every rerun loads identical weights.
+# max_seq_length: the model's own default limit (512 for the BERT-style encoders). Longer LMSYS messages are truncated.
+
+bge_base:
+  hf_id: BAAI/bge-base-en-v1.5
+  revision: a5beb1e3e68b9ab74eb54cfd186867f64f240e1a
+  query_prompt: "Represent this sentence for searching relevant passages: "
+  document_prompt: ""
+  max_seq_length: 512
+
+e5_base:
+  hf_id: intfloat/e5-base-v2
+  revision: f52bf8ec8c7124536f0efb74aca902b2995e5bcd
+  query_prompt: "query: "
+  document_prompt: "passage: "
+  max_seq_length: 512
+
+bge_large:
+  hf_id: BAAI/bge-large-en-v1.5
+  revision: d4aa6901d3a41ba39fb536a557fa166f842b0e09
+  query_prompt: "Represent this sentence for searching relevant passages: "
+  document_prompt: ""
+  max_seq_length: 512
+
+mxbai_large:
+  hf_id: mixedbread-ai/mxbai-embed-large-v1
+  revision: b33106f585b9ce46904ad7443a3b52b7a63e231c
+  query_prompt: "Represent this sentence for searching relevant passages: "
+  document_prompt: ""
+  max_seq_length: 512
+
+embeddinggemma2:
+  hf_id: google/embeddinggemma-2
+  revision: 914f7f89142e33e77833254d9c9b90c3cef7303b
+  query_prompt: "task: search result | query: "
+  document_prompt: "title: none | text: "
+  max_seq_length: 1024        # capped (the model accepts longer inputs); only a handful of LMSYS messages exceed it
