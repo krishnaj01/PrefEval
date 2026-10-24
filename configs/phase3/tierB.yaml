@@ -1,0 +1,10 @@
+# Tier B: Mistral-7B-v0.2 long context (paper rows 10k / 16k / 23k), explicit = Phase 1 mistral_tierC_long grid,
+# FULL PIPELINE (memory + EmbeddingGemma-2 RAG) = the headline long-context result. ~12 h (Mistral: 8 / 14 / 21 s per question).
+# Needs the 32k context and Mistral's Ollama settings (FA + q8_0 KV cache; the runner checks and prints the switch command).
+name: tierB
+model: mistral7b
+num_ctx: 32768
+forms: [explicit]
+methods: [memory_rag]
+inter_turns: [28, 48, 68]
+topics: all

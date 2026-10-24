@@ -1,0 +1,8 @@
+# Tier B2: Mistral-7B-v0.2 long context, MEMORY ONLY (isolates memory vs the full pipeline at 10k-23k). ~12 h.
+name: tierB2
+model: mistral7b
+num_ctx: 32768
+forms: [explicit]
+methods: [memory]
+inter_turns: [28, 48, 68]
+topics: all

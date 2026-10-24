@@ -1,0 +1,7 @@
+# Tier A: Llama-3-8B, both forms, every length it supports (8k context) = Phase 1 llama grid. ~6 h.
+name: tierA
+model: llama3-8b
+forms: [explicit, implicit-choice]
+methods: [memory, rag_gemma, memory_rag]   # RAG methods skip inter_turns 0 (no distractor turns), as Phase 1
+inter_turns: [0, 3, 8]
+topics: all

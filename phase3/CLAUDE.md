@@ -13,3 +13,12 @@
 - Partial runs (`--topics` / `--inter-turns`) require `PHASE3_RESULTS_DIR=results/phase3_smoke` (asserted), so the
   committed `results/phase3/` is only ever written by full runs.
 - Ties in ranking are broken by conversation order (stable sort), the same as upstream.
+- MCQ inputs (memories `results/phase3/memory/`, EmbeddingGemma-2 rankings) are always read from `MAIN_RESULTS_DIR`. Only
+  outputs follow `PHASE3_RESULTS_DIR`. `--limit/--topics` runs require the smoke dir (asserted).
+- Classifier leakage rule: topic t uses the Phase 2 fold model whose **test** fold contains t (`memory.topic_fold`).
+- Every Phase 3 method must stay "one change versus a Phase 1 baseline". `phase3.checks.check_prompts` asserts that the reductions
+  are byte-identical. Rerun it after touching `prompts.py`.
+- Upstream explicit `msg_index` files are shifted by one LMSYS exchange in 13 topics (docs/PHASE3.md). Never decode SimCSE indices
+  with them in Phase 3 code. Use `conversations.pool` (real conversation order).
+- Long tiers are handed to the user via `scripts/phase3_tmux.sh "python -m phase3.runner run --config ..."`.
+  Each tier must run with its model's Ollama settings (guard exit code 3).

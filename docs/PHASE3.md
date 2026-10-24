@@ -84,3 +84,70 @@ Smoke or partial runs must go to the smoke folder:
 | `results/phase3/run_manifest.jsonl` | time, git state, versions, per step | committed |
 
 The stored top-10 rankings are also the input for the later RAG and memory prompt steps.
+
+**Result (summary in `results/phase3/retrieval/summary.md`):**
+- At 23k tokens, EmbeddingGemma-2 finds the explicit preference in its top 5 for 82.7% of questions, versus 40.0% for SimCSE.
+  On implicit-choice it's 87.7% versus 58.5%. e5-base is worse than SimCSE on long explicit conversations.
+- **Chosen retriever: EmbeddingGemma-2.**
+
+**Upstream quirk (found while verifying):**
+- The stored SimCSE *scores* are the same list in every file: explicit score `2+j` equals implicit score `j` for the same question.
+- In 13 of the 20 topics, however, the explicit `msg_index_<topic>…json` file, which turns a score index back into text, is shifted
+  by one LMSYS exchange (index 2 gives LMSYS message #2 instead of #0). So in those topics the paper's explicit RAG put slightly
+  different messages into the prompt than the ones it scored.
+- **Recall and rank are unaffected**, because they depend only on the scores. Phase 1 reproduced upstream's behaviour as it is.
+- Phase 3's own RAG takes message text from the real conversation order.
+
+## Step 2: memory + prompts + MCQ runs
+
+**Memory (`python -m phase3.memory`, ~20 s, no LLM):**
+- Every user message before the question is scored by DistilBERT (Phase 2). For each topic we use the fold model that was **tested**
+  on that topic, with that fold's validation-tuned threshold, so there is no leakage.
+- A flagged message becomes a memory entry. The assistant message right before it is attached, so for implicit-choice an entry is the options plus the selection.
+- Results (`results/phase3/memory/summary.md`):
+  - the true preference reaches memory in **98.6%** of explicit and **99.9%** of implicit questions;
+  - false entries come from LMSYS messages only, and only at 16k (0.22 per question) and 23k (0.65).
+
+**Methods** (`phase3/prompts.py`). Each one changes exactly one thing compared with its closest Phase 1 baseline:
+
+| Method | Prompt |
+|---|---|
+| `memory` | upstream zero-shot prompt plus a "Known user preferences" block before the question |
+| `rag_gemma` | upstream RAG prompt (same builder and wording), with the top-5 from EmbeddingGemma-2 instead of SimCSE |
+| `memory_rag` | the `rag_gemma` prompt plus the memory block (retrieved context, then memory, then question) |
+
+- **Memory policy:** include every entry if there are 5 or fewer; otherwise include the 5 most similar to the question (EmbeddingGemma-2),
+  kept in conversation order.
+- The full conversation stays in every prompt.
+- At 0.2k tokens only `memory` runs, as Phase 1 also has no RAG there.
+- **Verified** (`python -m phase3.checks`): with SimCSE's picks, `rag_gemma` is byte-identical to Phase 1's RAG prompt, and `memory` with an empty
+  memory is byte-identical to Phase 1's zero-shot prompt (96 prompts, both models, both forms).
+
+**Stress test (multiple preferences):**
+- Memory = the classifier's entries at 3k tokens plus D ∈ {5, 10, 20} preferences from questions of **other** topics. Other topics only,
+  because two preferences from the same topic can contradict each other.
+- The sets are nested and seeded, and the entries appear in a random order with no turn labels, so there's no position cue.
+- Policies: `all` (every entry) vs `top5` (retrieval over the memory).
+- Level 1 (`python -m phase3.stress`, no LLM): with 20 distractors, top5 keeps the true preference for 97.4% (explicit) and 98.5% (implicit)
+  of the questions where it was in memory.
+- Level 2 = tier S MCQ runs.
+
+**Runs** (`python -m phase3.runner run --config configs/phase3/<tier>.yaml`):
+- They use Phase 1's backend, option shuffle, strict metric, resume logic and Ollama-settings guard.
+- The explicit reply to the preference is reused from Phase 1. `--verify-reply N` regenerates it to check; the smoke run matched.
+
+| Tier | Model | Contents | Approx. time |
+|---|---|---|---|
+| A | Llama-3-8B | both forms, 0.2k/1k/3k, all 3 methods | ~6 h |
+| S | Llama-3-8B | stress test, 3k, D × policy, both forms | ~7 h |
+| B | Mistral-7B | explicit 10k/16k/23k, `memory_rag` (headline long-context result) | ~12 h |
+| B2 | Mistral-7B | explicit 10k/16k/23k, `memory` | ~12 h |
+| C_short / C_long | Mistral-7B | short grid, all methods / `rag_gemma` at long context | ~7 h / ~12 h |
+
+- Mistral tiers need Mistral's Ollama settings (FA + q8_0 KV cache). The runner refuses to start otherwise and prints the switch command.
+- `python -m phase3.aggregate` builds `results/phase3/summary/{comparison.md, stress.md, figures/}` from the per-question records.
+  - Phase 1 baselines are recomputed from Phase 1's records; they reproduce Phase 1's summary exactly.
+  - RAG comparisons are also reported on identical questions (`rag_set`).
+
+**Machine note:** the system disk, swap, home folder and Ollama models are all on the HDD (`sda`), and the NVMe SSD is not mounted. Under memory pressure the system thrashes:
+the Ollama model alone maps about 7.5 GB of RAM. Keep other applications light during runs.

@@ -1,0 +1,7 @@
+# Tier C (short): Mistral-7B-v0.2, both forms, 0.2k / 1k / 3k = Phase 1 mistral short grids (8k context). ~7 h.
+name: tierC_short
+model: mistral7b
+forms: [explicit, implicit-choice]
+methods: [memory, rag_gemma, memory_rag]
+inter_turns: [0, 3, 8]
+topics: all

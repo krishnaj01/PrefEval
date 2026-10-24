@@ -1,0 +1,7 @@
+# Smoke: a few questions per cell, both forms, all methods (run with PHASE3_RESULTS_DIR=results/phase3_smoke --limit 3)
+name: smoke
+model: llama3-8b
+forms: [explicit, implicit-choice]
+methods: [memory, rag_gemma, memory_rag]
+inter_turns: [0, 8]
+topics: [travel_hotel, shop_motors]

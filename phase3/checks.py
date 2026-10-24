@@ -6,6 +6,7 @@ Calls the vendored `handle_rag_task_mcq` / `handle_rag_task_implicit_mcq` with t
 and compares their `top_k_sentences` with the top-5 ids stored by `phase3.retrieve`, for every question and length.
 """
 
+import os
 from types import SimpleNamespace
 
 from phase1.runner import load_rag
@@ -23,8 +24,16 @@ def _capture(**kw):
 
 
 def main():
+    originals = up.get_question_prompt_mcq_rag, up.get_implicit_question_prompt_rag_mcq
     up.get_question_prompt_mcq_rag = lambda *a, **kw: _capture(**kw)
     up.get_implicit_question_prompt_rag_mcq = lambda *a, **kw: _capture(**kw)
+    try:
+        check_simcse_top5()
+    finally:   # restore: check_prompts needs the real builders
+        up.get_question_prompt_mcq_rag, up.get_implicit_question_prompt_rag_mcq = originals
+
+
+def check_simcse_top5():
     lm = lmsys_messages()
     checked = 0
     for n in retrieval_config()["inter_turns"]:
@@ -57,5 +66,53 @@ def main():
     print(f"OK: SimCSE top-{TOPK} identical to upstream's RAG selection for {checked} (question, length) pairs")
 
 
+def check_prompts(n_per=3):
+    """Phase 3 prompts reduce exactly to Phase 1's: `rag_gemma` fed SimCSE's top-5 == Phase 1 RAG prompt, and
+    `memory` with an empty memory == Phase 1 zero-shot prompt (byte-identical, both families, both forms)."""
+    from phase1 import runner as p1
+    from phase1.runner import TopicContext, load_json, repo_settings, run_question, shuffle_options
+    from phase3.memory import memory_config
+    from phase3.prompts import build_prompt
+    from phase3.runner import MODELS_YAML
+
+    settings, models = repo_settings(), p1.load_yaml(MODELS_YAML)
+    turns = load_json(os.path.join(p1.DATA, "filtered_inter_turns.json"))
+    checked = 0
+    for model in ("llama3-8b", "mistral7b"):
+        cfg = {"model": model, "model_cfg": models[model], "rag_topk": TOPK, "mem": memory_config()}
+        for form, pool_name in (("explicit", "explicit@paper"), ("implicit-choice", "implicit-choice")):
+            for n in (3, 8):
+                simcse = {(r["topic"], r["task_id"]): r["top_ids"] for r in read_jsonl(out_path(SIMCSE, pool_name, n))}
+                # explicit: upstream decodes SimCSE indices with a per-topic msg_index file that, in 13 of 20 topics, is
+                # shifted by one LMSYS exchange (see docs/PHASE3.md); compare on topics where it follows conversation order
+                topics = ("travel_hotel", "pet_ownership") if form == "explicit" else ("travel_hotel", "shop_motors")
+                for topic in topics:
+                    for method_p1, method_p3 in (("rag", "rag_gemma"), ("zero-shot", "memory")):
+                        ctx = TopicContext(cfg, topic, form, n, turns, need_rag=method_p1 == "rag")
+                        ctx.reply_llm = model
+                        for tid in range(n_per):
+                            options, _ = shuffle_options(ctx.mcq[tid]["classification_task_options"], 41, topic, tid)
+                            reply = llm_replies(model, topic)[tid] if form == "explicit" else None
+
+                            class Capture:
+                                calls, prompt = [], None
+
+                                def generate(self, prompt, max_tokens, purpose="answer"):
+                                    return reply
+
+                                def upstream_generate_message(self, c, mid, mt, sp=None, messages=None, *a, **kw):
+                                    Capture.prompt = messages
+                                    return "A"
+
+                            run_question(ctx, Capture(), method_p1, tid, options, settings)
+                            ours = build_prompt(ctx, method_p3, tid, options, reply, [],
+                                                simcse[(topic, tid)][:TOPK] if method_p1 == "rag" else None,
+                                                settings["system_prompt"])
+                            assert ours == Capture.prompt, (model, form, n, topic, tid, method_p3)
+                            checked += 1
+    print(f"OK: {checked} Phase 3 prompts byte-identical to Phase 1 (rag_gemma+SimCSE ids == rag, empty memory == zero-shot)")
+
+
 if __name__ == "__main__":
     main()
+    check_prompts()

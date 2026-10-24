@@ -1,0 +1,12 @@
+# Phase 3 preference memory + prompting settings (phase3.memory / phase3.runner / phase3.stress)
+classifier: distilbert          # Phase 2 model; per topic the fold model that was TESTED on it (no leakage), its tuned threshold
+classifier_max_len: 256         # = Phase 2 training max_len
+attach_previous_assistant: true # a flagged user turn is stored with the assistant message right before it (implicit: options + selection)
+memory_topk: 5                  # memory policy: include all entries if <= memory_topk, else the memory_topk most similar to the question
+retriever: embeddinggemma2      # encoder for retrieval over raw messages AND over memory (choice: retrieval benchmark)
+rag_topk: 5                     # retrieved raw messages, as the paper's RAG
+seed: 41                        # option shuffle (= Phase 1) and stress-test sampling
+
+stress:
+  distractors: [5, 10, 20]      # extra preferences from OTHER topics added to memory ("earlier sessions")
+  policies: [all, top5]         # include every entry vs retrieve memory_topk entries over the memory

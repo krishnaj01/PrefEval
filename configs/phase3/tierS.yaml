@@ -1,0 +1,9 @@
+# Tier S: multi-preference stress test. Llama-3-8B, 3k tokens (inter_turns 8), memory-only prompt;
+# memory = classifier entries + D preferences from OTHER topics, policies from memory.yaml (stress:). ~7 h (12,000 questions at ~2 s).
+name: tierS
+model: llama3-8b
+forms: [explicit, implicit-choice]
+methods: [memory]
+inter_turns: [8]
+stress: true
+topics: all

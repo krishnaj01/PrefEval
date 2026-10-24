@@ -13,6 +13,8 @@ EMB_DIR = os.path.join(REPO, "data", "phase3", "emb")            # embedding cac
 # rankings, metrics, figures (committed). PHASE3_RESULTS_DIR overrides it (smoke tests: results/phase3_smoke)
 RESULTS_DIR = os.environ.get("PHASE3_RESULTS_DIR") or os.path.join(REPO, "results", "phase3")
 RETRIEVAL_DIR = os.path.join(RESULTS_DIR, "retrieval")
+# Inputs of the MCQ runs (memories, EmbeddingGemma-2 rankings) are always read from the real results, also in smoke runs
+MAIN_RESULTS_DIR = os.path.join(REPO, "results", "phase3")
 PHASE1_RESULTS = os.path.join(REPO, "results", "phase1")
 LOGS_DIR = os.path.join(REPO, "logs", "phase3")
 

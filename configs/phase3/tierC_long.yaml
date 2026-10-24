@@ -1,0 +1,8 @@
+# Tier C (long): Mistral-7B-v0.2 explicit, RAG with EmbeddingGemma-2 alone at 10k / 16k / 23k (completes the long grid). ~12 h.
+name: tierC_long
+model: mistral7b
+num_ctx: 32768
+forms: [explicit]
+methods: [rag_gemma]
+inter_turns: [28, 48, 68]
+topics: all
