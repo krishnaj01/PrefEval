@@ -1,0 +1,16 @@
+\begin{tabular}{l|cccccc}
+\toprule
+ & \multicolumn{6}{c}{Explicit} \\
+Method & 0.2k & 1k & 3k & 10k & 16k & 23k \\
+\midrule
+Zero-shot & 95.5 & 61.5 & 55.5 & 42.5 & 37.1 & 37.6 \\
+Reminder & 96.2 & 78.9 & 71.3 & 56.7 & 43.9 & 46.9 \\
+CoT & 88.0 & 74.9 & 67.0 & -- & -- & -- \\
+Self-Critic & 79.8 & 67.0 & 61.0 & -- & -- & -- \\
+RAG, SimCSE (paper) & -- & 81.0 & 75.7 & 64.6 & 59.0 & 53.7 \\
+\midrule
+\textbf{Memory (ours)} & \textbf{97.1} & \textbf{94.7} & \textbf{94.9} & 93.7 & \textbf{92.4} & \textbf{88.6} \\
+RAG, EmbeddingGemma-2 (ours) & -- & 85.3 & 86.1 & -- & -- & -- \\
+Memory + RAG (ours) & -- & 94.2 & 94.4 & \textbf{94.1} & 90.6 & 87.5 \\
+\bottomrule
+\end{tabular}

@@ -1,0 +1,14 @@
+\begin{tabular}{lr|ccccc|cccc|r}
+\toprule
+ & & \multicolumn{5}{c|}{Explicit} & \multicolumn{4}{c|}{Implicit-choice} &  \\
+Retriever & Params & R@5 1k & 3k & 10k & 23k & R@1 23k & R@5 1k & 3k & 10k & 23k & ms/msg \\
+\midrule
+SimCSE (paper) & 355M & 0.95 & 0.83 & 0.60 & 0.40 & 0.05 & 0.97 & 0.90 & 0.75 & 0.58 & -- \\
+\midrule
+bge-base-v1.5 & 110M & 0.96 & 0.92 & 0.68 & 0.57 & 0.29 & 1.00 & 0.99 & 0.95 & 0.92 & 3.5 \\
+e5-base-v2 & 110M & 0.96 & 0.86 & 0.44 & 0.31 & 0.12 & 1.00 & 1.00 & 0.96 & 0.93 & 3.6 \\
+bge-large-v1.5 & 335M & 0.98 & 0.95 & 0.74 & 0.66 & 0.43 & 1.00 & 0.99 & 0.92 & 0.89 & 9.8 \\
+mxbai-embed-large & 335M & 1.00 & 0.99 & 0.83 & 0.78 & 0.53 & 1.00 & 0.98 & 0.91 & 0.88 & 9.8 \\
+\textbf{EmbeddingGemma-2} & 744M & 1.00 & 1.00 & 0.90 & 0.83 & 0.53 & 1.00 & 0.99 & 0.92 & 0.88 & 15.6 \\
+\bottomrule
+\end{tabular}

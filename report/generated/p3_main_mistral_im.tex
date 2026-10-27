@@ -1,0 +1,16 @@
+\begin{tabular}{l|ccc}
+\toprule
+ & \multicolumn{3}{c}{Implicit-choice} \\
+Method & 0.2k & 1k & 3k \\
+\midrule
+Zero-shot & 81.0 & 50.8 & 47.5 \\
+Reminder & \textbf{88.4} & 71.9 & 63.1 \\
+CoT & 74.0 & 60.2 & 59.5 \\
+Self-Critic & 67.2 & 51.8 & 50.9 \\
+RAG, SimCSE (paper) & -- & 69.0 & 64.0 \\
+\midrule
+\textbf{Memory (ours)} & 81.9 & \textbf{81.4} & \textbf{79.8} \\
+RAG, EmbeddingGemma-2 (ours) & -- & 67.2 & 65.0 \\
+Memory + RAG (ours) & -- & 79.3 & 78.3 \\
+\bottomrule
+\end{tabular}
