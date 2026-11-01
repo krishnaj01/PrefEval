@@ -1,0 +1,445 @@
+\documentclass[lettersize,journal]{IEEEtran}
+\usepackage[T1]{fontenc}
+\usepackage{newtxtext,newtxmath}   % Times text + math with real bold/italic (IEEE font)
+\usepackage{amsmath}
+\usepackage{algorithmic}
+\usepackage{algorithm}
+\usepackage{array}
+\usepackage[caption=false,font=normalsize,labelfont=sf,textfont=sf]{subfig}
+\usepackage{textcomp}
+\usepackage{stfloats}
+\usepackage{url}
+\usepackage{verbatim}
+\usepackage{graphicx}
+\usepackage{cite}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,calc}
+\hyphenation{op-tical net-works semi-conduc-tor IEEE-Xplore Embedding-Gemma}
+
+\input{generated/macros.tex}
+\input{generated/p2_macros.tex}
+\input{generated/p3_macros.tex}
+\graphicspath{{figures/}}
+\definecolor{boxblue}{HTML}{E8F1FC}
+\definecolor{boxline}{HTML}{2A78D6}
+\definecolor{boxgreen}{HTML}{E7F6EF}
+\definecolor{linegreen}{HTML}{1BAF7A}
+\definecolor{boxorange}{HTML}{FDEEE7}
+\definecolor{lineorange}{HTML}{EB6834}
+
+\begin{document}
+
+\title{Improving Long-Context Preference Following in LLMs via a Trained Preference-Detection Classifier and Enhanced Retrieval}
+
+\author{Krishna Jhanwar - 12341250}
+
+\maketitle
+
+\begin{abstract}
+Large language models (LLMs) used as assistants are expected to remember what a user has told them, yet PrefEval (ICLR 2025) shows
+that their preference following collapses as unrelated conversation accumulates. This project addresses two weaknesses that the paper
+identifies: an outdated retriever and the absence of any persistent preference state. First, I rebuilt PrefEval's classification
+benchmark to run fully locally and reproduced its five baselines with two of the paper's models (Llama-3-8B, Mistral-7B-v0.2;
+\nQuestions{} questions). Second, I trained a small classifier that detects preference-stating user turns (DistilBERT, F1~0.969 on unseen
+topics, 1.4\,ms per message). Third, the classifier feeds a structured \emph{preference memory} that is restated before each question,
+and a modern encoder (EmbeddingGemma-2) replaces the paper's 2021 SimCSE retriever. On the same questions, prompts and metric as the baselines,
+the memory beats every baseline at every context length from 1k tokens up, for both models and both preference forms. It reaches
+\qMiMemTwentyThree\% at 23k tokens with Mistral, versus \qMiRagTwentyThree\% for the paper's best method (RAG). Ablations show that the new encoder
+alone fixes the retrieval bottleneck for explicit preferences, that adding retrieved raw messages on top of memory does not help, and that
+retrieving \emph{over} the memory keeps accuracy stable when the memory holds many preferences.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Personalization, preference following, long context, retrieval-augmented generation, conversational memory, text classification.
+\end{IEEEkeywords}
+
+%===============================================================================
+\section{Introduction}
+\IEEEPARstart{A}{n} assistant that is told \emph{``I avoid gluten because of a severe intolerance''} and later recommends a bakery has
+failed the user. PrefEval~\cite{prefeval} measures exactly this. A preference is stated at the start of a conversation, unrelated
+multi-session chat follows, and a later question can only be answered well if the preference is remembered. Even strong models degrade
+quickly, and the paper's best mitigation, retrieval-augmented generation (RAG) with a SimCSE~\cite{simcse} encoder, also loses accuracy as the
+conversation grows.
+
+\textbf{Project criterion.} PrefEval's code is public, so this project follows the criterion \emph{``code available: address its
+limitations and propose a solution''}. It first reproduces the baselines locally, then proposes and evaluates an improvement.
+
+\textbf{Team and contributions.} This is an individual project. Krishna Jhanwar (12341250, \texttt{krishnaj@iitbhilai.ac.in}) is
+responsible for all parts: problem definition and proposal, design decisions, data audit, running all experiments, analysis and reports.
+Tools and major prompts used are listed in the Appendix.
+
+\textbf{Problem statement and scope.} The goal is to improve preference following in long conversations for open 7--8B models running on a
+single consumer GPU. The scope is PrefEval's \emph{classification} (multiple-choice) task, for explicit and implicit choice-based preferences, at
+the paper's context lengths of 0.2k--23k tokens. The generation task is out of scope because its judge (Claude-3-Sonnet via Bedrock) is not
+reproducible locally. The problem matters for ML because it isolates two open issues in deployed LLMs: using information far back in a long
+context~\cite{lostmiddle}, and maintaining user state over many sessions.
+
+\textbf{Contributions.}
+(1)~A fully local, verified reproduction of PrefEval's classification baselines (\nQuestions{} questions, two models, five methods).
+(2)~A preference-detection classifier, trained with topic-held-out cross-validation and audited pseudo-labels, that is 51$\times$ faster and more
+accurate than prompting an 8B LLM.
+(3)~A retrieval benchmark of five current encoders against the paper's retriever.
+(4)~A classifier-driven preference memory, evaluated against all baselines on \qTotalQ{} further questions, with ablations and a
+multi-preference stress test.
+
+%===============================================================================
+\section{Related Work}
+\textbf{Preference following.} PrefEval~\cite{prefeval} evaluates explicit and implicit preferences over long multi-session contexts and
+compares zero-shot, reminder, self-critic, few-shot chain-of-thought and RAG prompting.
+\textbf{Long context.} Models use information at the start of long inputs poorly~\cite{lostmiddle}; PrefEval places the preference exactly there.
+\textbf{Retrieval.} RAG adds retrieved text to the prompt. PrefEval uses SimCSE~\cite{simcse}; since then, retrieval-trained encoders
+such as BGE~\cite{bge}, E5~\cite{e5}, mxbai-embed-large~\cite{mxbai} and EmbeddingGemma~\cite{embeddinggemma} have become standard.
+\textbf{Memory.} Systems such as MemGPT~\cite{memgpt} let an LLM write and read long-term memory, which costs extra LLM calls.
+This project instead uses a small \emph{trained} classifier to decide what is stored, which needs one cheap forward pass per turn.
+
+%===============================================================================
+\section{Proposed Methodology}
+The work has three phases; each builds on the previous one (Fig.~\ref{fig:pipeline}).
+
+\begin{figure*}[!t]
+\centering
+\begin{tikzpicture}[font=\footnotesize, node distance=3.5mm and 6mm,
+  box/.style={draw=boxline, fill=boxblue, rounded corners=2pt, align=center, inner sep=3pt, minimum height=8mm},
+  gbox/.style={draw=linegreen, fill=boxgreen, rounded corners=2pt, align=center, inner sep=3pt, minimum height=8mm},
+  obox/.style={draw=lineorange, fill=boxorange, rounded corners=2pt, align=center, inner sep=3pt, minimum height=8mm},
+  arr/.style={-{Stealth[length=1.8mm]}, thick, draw=black!70}]
+\node[box] (turn) {each incoming\\user turn};
+\node[gbox, right=of turn] (clf) {\textbf{Phase 2:} DistilBERT\\$p \geq \tau$ ? (1.4\,ms)};
+\node[gbox, right=of clf] (mem) {\textbf{memory list}\\flagged turn + preceding\\assistant message};
+\node[box, below=7mm of turn] (q) {final question};
+\node[gbox, right=of q] (sel) {memory policy: $\leq$5 entries\\$\rightarrow$ all, else top-5\\by EmbeddingGemma-2};
+\node[obox, below=of sel] (rag) {optional: top-5 raw\\messages (RAG)};
+\node[box, right=of sel] (prompt) {prompt = full conversation\\+ [RAG context] + \textbf{Known}\\\textbf{user preferences} + question};
+\node[box, right=of prompt] (llm) {LLM via Ollama\\(\textbf{Phase 1} harness:\\same prompts, parser)};
+\draw[arr] (turn) -- (clf);
+\draw[arr] (clf) -- node[above, font=\scriptsize]{yes} (mem);
+\draw[arr] (mem.south) |- ($(sel.north)+(0,2.5mm)$) -- (sel.north);
+\draw[arr] (q) -- (sel);
+\draw[arr] (sel) -- (prompt);
+\draw[arr] (rag.east) -| (prompt.south);
+\draw[arr] (prompt) -- (llm);
+\end{tikzpicture}
+\caption{Proposed pipeline. Phase~1 provides the local evaluation harness and baselines, Phase~2 the classifier, Phase~3 the memory,
+the memory policy and the retriever (green: new components; orange: retrieval over raw messages, evaluated as an ablation).}
+\label{fig:pipeline}
+\end{figure*}
+
+\subsection{Phase 1: local reproduction of the baselines}
+PrefEval's released code calls Amazon Bedrock for every model, and an earlier local attempt failed with several unrelated errors. I rebuilt
+the classification pipeline around the \emph{original} prompt-building functions (vendored unchanged from the upstream repository) and replaced
+only the inference call with Ollama in raw-prompt mode. The model therefore sees exactly the text that Bedrock received. Answers are
+parsed with the original strict \texttt{<choice>X</choice>} parser. Every question is written to disk as soon as it is answered, so a run
+resumes after any interruption. Five issues that would have silently biased the reproduction were found and fixed:
+\begin{itemize}
+  \item a duplicated start-of-sequence token;
+  \item trailing whitespace in the Llama self-critic templates, which made the model stop immediately;
+  \item silent prompt truncation at long context;
+  \item two defects in the released retrieval data (one truncated file, seven files that end early);
+  \item a GPU-memory limit at 32k context, solved with flash attention and an 8-bit KV cache for Mistral, enforced by a per-model settings guard.
+\end{itemize}
+
+\subsection{Phase 2: preference-detection classifier}
+\emph{Task:} given one user message (text only), decide whether it states a lasting personal preference.
+\emph{Data:} \pRows{} messages. \pGold{} labels come from PrefEval's structure (preference sentences and choice selections are positive;
+queries and questions negative). \pPseudo{} are pseudo-labels from Llama-3-8B for persona-dialogue turns and 5{,}000 OpenAssistant
+messages. A manual audit of 200 pseudo-labels exposed two systematic error types; targeted refinement raised agreement with the human labels from
+\pAuditBefore\% to \pAuditAfter\%, and \pAudited{} rows carry the human label.
+\emph{Leakage control:} topic-level 5-fold cross-validation (test topics are never seen in training), and the LMSYS distractor turns are never
+trained on. \emph{Models:} DistilBERT~\cite{distilbert}, ModernBERT~\cite{modernbert}, and TinyLlama-1.1B~\cite{tinyllama} and
+Qwen3-1.7B~\cite{qwen3} with LoRA~\cite{lora}. The decision threshold is tuned on each fold's validation topics.
+
+\subsection{Phase 3: preference memory and modern retrieval}
+\textbf{Step 1, retrieval benchmark (no LLM calls).} Five encoders (bge-base/large-v1.5~\cite{bge}, e5-base-v2~\cite{e5},
+mxbai-embed-large~\cite{mxbai}, EmbeddingGemma-2~\cite{embeddinggemma}) are compared with the paper's stored SimCSE scores. Each one must find the
+preference message among all messages before the question, using each model's official query/document prompts and weights pinned to an
+exact version. Because a bi-encoder embeds each message independently, pre-computing embeddings gives exactly what a live system computes turn
+by turn; the real-time cost is reported as latency.
+
+\textbf{Step 2, memory.} Each user turn is scored by the Phase~2 classifier. For a question of topic $t$, the fold model that was \emph{tested}
+on $t$ is used, so the classifier never saw that topic. A flagged turn is stored together with the assistant message just before it. For
+implicit preferences, the entry is therefore the options list plus the user's selection: Step~1 showed that the selection alone (e.g.\ ``I'll take
+the second one'') is meaningless without the options. At question time, all entries go into the prompt if there are at most five; otherwise
+the five most similar to the question are selected with EmbeddingGemma-2. They are inserted as a short ``Known user preferences'' block
+right before the question.
+
+\textbf{Methods compared.} Each new method changes exactly one thing compared with a Phase~1 baseline:
+(i) \emph{Memory} = the zero-shot prompt plus the memory block;
+(ii) \emph{RAG-Gemma} = the paper's RAG prompt with EmbeddingGemma-2 replacing SimCSE;
+(iii) \emph{Memory+RAG} = (ii) plus the memory block.
+With SimCSE's retrieved messages substituted, our RAG prompt is byte-identical to the Phase~1 RAG prompt, and the memory prompt with an empty
+memory is byte-identical to the zero-shot prompt (checked on 96 prompts). Every accuracy difference is therefore caused by the method itself.
+
+%===============================================================================
+\section{Experimental Setup}
+\textbf{Dataset.} PrefEval~\cite{prefeval} (public, in the GitHub repository and on HuggingFace): 1{,}000 preference--question pairs over
+20 topics in each preference form. Each question has four options, exactly one of which respects the preference. Distractor turns come from
+LMSYS-Chat-1M~\cite{lmsys}. The paper's context rows 0.2k/1k/3k/10k/16k/23k tokens correspond to 0/3/8/28/48/68 inserted turn pairs. The
+explicit and implicit choice-based forms are used; Phase~2 additionally uses OpenAssistant \texttt{oasst1}.
+
+\textbf{Models.} Llama-3-8B-Instruct~\cite{llama3} (8k context, so 0.2k--3k only) and Mistral-7B-Instruct-v0.2~\cite{mistral} (up to 23k), both used
+in the paper, served as 8-bit weights by Ollama with greedy decoding (temperature 0, seed 41). Mixtral-8x7B does not fit the hardware.
+
+\textbf{Metric.} Accuracy with the paper's strict answer parser, macro-averaged over the 20 topics, as in the paper. A lenient parse is logged as a
+diagnostic only. The classifier is evaluated with precision, recall and F1 on unseen-topic test folds.
+
+\textbf{Protocol.} Every Phase~3 cell uses the same 1{,}000 questions, option order and prompts as its Phase~1 baseline, so all comparisons are
+paired. The paper's RAG has stored scores for 949 explicit and 973 implicit questions; RAG comparisons are additionally reported on exactly those.
+
+\textbf{Resources.} One workstation: NVIDIA RTX~3060 (12\,GB), Intel i7-12700, 15\,GB RAM. Software: Python~3.11, PyTorch, HuggingFace
+\texttt{transformers} and \texttt{peft}, sentence-transformers, scikit-learn, Ollama. In total, about 120 GPU-hours: Phase~1 \gpuHours\,h,
+Phase~3 \qGpuHours\,h, plus classifier training and pseudo-labelling. All long runs ran in \texttt{tmux} and resume per question.
+
+%===============================================================================
+\section{Results and Analysis}
+
+\subsection{Phase 1: reproduction}
+Of the \nCompared{} cells with a published number (excluding the trivial 0.2k row), \nWithinFive{} are within 5 points of the paper and
+\nWithinTen{} within 10 (median absolute difference \medianAbsDelta{} points; Fig.~\ref{fig:vspaper}, Table~\ref{tab:p1}). The paper's
+qualitative findings reproduce:
+\begin{itemize}
+  \item accuracy collapses with context length (Llama zero-shot: 94.2\% at 0.2k $\rightarrow$ 43.3\% at 3k);
+  \item Reminder and RAG are the strongest baselines;
+  \item self-critique often overturns correct answers;
+  \item implicit preferences are harder.
+\end{itemize}
+The largest gap, Mistral RAG at long context (53.7\% vs.\ 75\%), coincides with the 8-bit KV cache needed to fit 32k tokens in 12\,GB.
+At long context the model also falls back on answer position: Mistral zero-shot is right \posAccAlong\% of the time when the answer is A,
+but only \posAccDlong\% when it is D.
+
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=0.82\textwidth]{fig_vs_paper.pdf}
+\caption{Phase~1: explicit-preference accuracy, our local reproduction (solid) vs.\ the paper's Figure~6 (dashed).}
+\label{fig:vspaper}
+\end{figure*}
+
+\begin{table*}[!t]
+\caption{Phase 1 reproduction, explicit preference: ours / paper (difference), accuracy \%.}
+\label{tab:p1}
+\centering\small
+\textbf{Llama-3-8B-Instruct}\\[2pt]
+\input{generated/tab_vs_paper_llama3-8b.tex}\\[6pt]
+\textbf{Mistral-7B-Instruct-v0.2}\\[2pt]
+\resizebox{0.95\textwidth}{!}{\input{generated/tab_vs_paper_mistral7b.tex}}
+\end{table*}
+
+\subsection{Phase 2: classifier}
+All four classifiers reach F1 \pFOneLo--\pFOneHi{} on unseen topics, and their differences are small (Table~\ref{tab:p2}).
+On the same 2{,}000 messages, a zero-shot prompted Llama-3-8B reaches only F1~\pLlmFOne{} and wrongly flags 16.5\% of non-preference messages,
+while DistilBERT is \pSpeedup$\times$ faster (\pDistilLat\,ms vs.\ \pLlmLat\,ms per message). On the LMSYS turns that Phase~3 replays, the models
+raise false alarms on only \pOodLo--\pOodHi\% of messages. DistilBERT was selected for Phase~3 as the fastest model with a low false-alarm rate.
+
+\begin{table*}[!t]
+\caption{Phase 2: preference-detection classifiers, pooled over unseen-topic test folds. OOD flags = false alarms on LMSYS distractor turns.}
+\label{tab:p2}
+\centering\small
+\input{generated/p2_models.tex}
+\end{table*}
+
+\subsection{Phase 3, Step 1: retrieval}
+EmbeddingGemma-2 finds the explicit preference in its top~5 for \qGemExR\% of questions at 23k tokens, versus \qSimExR\% for SimCSE
+(implicit: \qGemImR\% vs.\ \qSimImR\%; Table~\ref{tab:retrieval}, Fig.~\ref{fig:retrieval}). SimCSE almost never ranks the preference first
+(recall@1 \qSimExROne\% at 1k, vs.\ \qGemExROne\%). Newer is not automatically better: e5-base-v2 falls below SimCSE on long explicit
+conversations (\qEFiveExR\% at 23k). EmbeddingGemma-2 was chosen (\qGemLat\,ms per message). On implicit preferences, no encoder ranks the user's
+selection first (recall@1 5--28\%), which motivated storing it together with the options message. Verifying the benchmark also revealed an
+upstream data quirk: in 13 of 20 topics, the file that maps SimCSE scores back to message text is shifted by one exchange. Recall and rank are
+unaffected, because they depend only on the scores.
+
+\begin{table*}[!t]
+\caption{Phase 3, Step 1: retrieval of the preference message (recall@5 unless noted), on the questions with stored SimCSE scores.}
+\label{tab:retrieval}
+\centering\small
+\input{generated/p3_retrieval.tex}
+\end{table*}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{p3_retrieval.pdf}
+\caption{Recall@5 of the preference message versus conversation length.}
+\label{fig:retrieval}
+\end{figure}
+
+\subsection{Phase 3, Step 2: memory quality}
+The classifier places the true preference in memory for \qMemEx\% of explicit and \qMemIm\% of implicit questions. The \qMissedEx{} explicit
+misses are mostly phrased as dislikes, e.g.\ ``I'm uncomfortable with invisible fences''. False entries appear only at 16k (\qFalseSixteen{} per
+question) and 23k (\qFalseTwentyThree): two LMSYS messages that read like stated opinions. Memories therefore hold 1--3 entries.
+
+\subsection{Phase 3: main comparison with the baselines}
+Tables~\ref{tab:llama}--\ref{tab:mistral} and Fig.~\ref{fig:main} give the end-to-end results.
+
+\begin{table}[!t]
+\caption{Llama-3-8B, accuracy \% (macro over 20 topics). Bold: best per column.}
+\label{tab:llama}
+\centering
+\resizebox{\columnwidth}{!}{\input{generated/p3_main_llama.tex}}
+\end{table}
+
+\begin{table}[!t]
+\caption{Mistral-7B-v0.2, accuracy \%. CoT and Self-Critic were not run beyond 3k (as in the paper).}
+\label{tab:mistral}
+\centering
+\resizebox{\columnwidth}{!}{\input{generated/p3_main_mistral_ex.tex}}\\[4pt]
+\resizebox{0.62\columnwidth}{!}{\input{generated/p3_main_mistral_im.tex}}
+\end{table}
+
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=\textwidth]{p3_main.pdf}
+\caption{Accuracy versus conversation length. Dashed gray: Phase~1 baselines; solid: proposed methods. The memory (blue) stays nearly flat.}
+\label{fig:main}
+\end{figure*}
+
+\begin{itemize}
+  \item \textbf{Memory beats every baseline at every length from 1k tokens up}, in all 11 such cells across both models and both forms. It is
+        the best of all methods in 10 of them; at Mistral 10k, Memory+RAG is 0.4 points higher.
+  \item \textbf{Most of the long-context collapse is removed.} With Mistral at 23k tokens, memory reaches \qMiMemTwentyThree\%, versus \qMiRagTwentyThree\% for
+        RAG, \qMiRemTwentyThree\% for Reminder and \qMiZsTwentyThree\% for zero-shot. From 0.2k to 23k, zero-shot and Reminder lose 49--58 points;
+        memory loses 8.5. With Llama at 3k: \qLlExMemThree\% vs.\ \qLlExRagThree\% (explicit) and \qLlImMemThree\% vs.\ \qLlImRagThree\% (implicit).
+  \item \textbf{These results are also above the paper's own published numbers} for the same models and lengths (e.g.\ paper RAG: 80\% for Llama at 3k,
+        75\% for Mistral at 23k).
+  \item \textbf{With no distractors (0.2k) there is nothing to forget}: memory only ties with Reminder on explicit, and on implicit it is lower
+        (Mistral \qMiImMemZero\% vs.\ \qMiImRemZero\%).
+\end{itemize}
+
+%===============================================================================
+\section{Ablation Study}
+
+\subsection{The retriever alone}
+With the prompt fixed and only the encoder swapped, on identical questions (Table~\ref{tab:ragsame}), RAG improves strongly on explicit
+preferences (Llama at 3k: \qLlExRagThree{} $\rightarrow$ \qLlExGemThree). On implicit preferences it improves little or not at all, even though
+retrieval itself improved: retrieved fragments of a choice dialogue are hard for the model to use. The memory entry, which restores the full
+options-plus-selection context, is what fixes the implicit case.
+
+\begin{table*}[!t]
+\caption{RAG with SimCSE vs.\ EmbeddingGemma-2 (same prompt, same questions), and Memory+RAG.}
+\label{tab:ragsame}
+\centering\small
+\input{generated/p3_rag_same.tex}
+\end{table*}
+
+\subsection{Adding RAG on top of memory}
+Memory+RAG is never clearly better than memory alone. A per-question comparison (Table~\ref{tab:lost}) shows why:
+\begin{itemize}
+  \item With Llama, most losses are \emph{format} failures. With two long context blocks, the model writes ``Based on your previous\ldots''
+        instead of \texttt{<choice>X</choice>}, and the paper's 5-token answer budget cuts it off (\qLostImParse{} of \qLostIm{} lost implicit
+        questions at 3k).
+  \item The preference had been retrieved in \qLostImGold{} of those \qLostIm{} cases, so retrieval itself did not fail.
+  \item Mistral, whose template pre-fills \texttt{<choice>}, has no format failures. There, the two methods give the same answer on 90--98\% of
+        questions, and the remaining retrieved distractors occasionally pull the model to another option.
+\end{itemize}
+With $\approx$99\% classifier recall there is little for retrieval to recover, so retrieving raw messages mainly adds noise.
+
+\begin{table*}[!t]
+\caption{Questions correct with Memory but wrong with Memory+RAG (``Lost''), split into format failures and wrong options; ``Pref.\ retrieved'':
+the preference was in the retrieved top~5; ``Gained'' is the reverse.}
+\label{tab:lost}
+\centering\footnotesize
+\input{generated/p3_lost.tex}
+\end{table*}
+
+\subsection{Memory policy under many preferences (stress test)}
+PrefEval conversations contain one preference each, so the ``top-5 over memory'' branch never triggers. To test it, $D \in \{5, 10, 20\}$
+preferences from \emph{other} topics were added to each memory, as if stated in earlier sessions. Same-topic preferences were excluded because
+they can contradict the true one. Entries were shown in a seeded random order without turn labels, so position gives no hint. Llama-3-8B, 3k tokens.
+Injecting every entry degrades steadily (Table~\ref{tab:stress}, Fig.~\ref{fig:stress}): at $D{=}20$ accuracy is \qStExAll\% (explicit) and
+\qStImAll\% (implicit), even though the true preference is in the prompt. Retrieving the top~5 over the memory keeps the true preference for
+\qStKeepEx\%/\qStKeepIm\% of questions and holds \qStExTop\%/\qStImTop\%, still above the paper's RAG at the same length.
+
+\begin{table}[!t]
+\caption{Stress test: accuracy \% with $D$ extra preferences in memory. ``Pref.\ kept'': share of questions where top-5 retrieval keeps the true
+preference.}
+\label{tab:stress}
+\centering
+\resizebox{\columnwidth}{!}{\input{generated/p3_stress.tex}}
+\end{table}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{p3_stress.pdf}
+\caption{Stress test: ``include all'' degrades as the memory grows; top-5 retrieval over the memory levels off.}
+\label{fig:stress}
+\end{figure}
+
+\subsection{Classifier choice}
+Phase~2 compared four detectors and all 15 ensembles: the best ensemble adds only $+0.001$ F1, because the models' errors are highly correlated.
+The smallest model (DistilBERT) was therefore sufficient, and it is 51$\times$ faster than LLM-based detection.
+
+%===============================================================================
+\section{Discussion}
+\begin{itemize}
+  \item \textbf{Why memory works.} The failure PrefEval measures is not that the model cannot apply a preference; at 0.2k it applies it about 95\% of
+        the time. The failure is that the preference gets lost in the conversation. Restating it next to the question removes the distance between
+        the preference and the question that causes the long-context failure.
+  \item \textbf{What the classifier contributes.} Deciding what to store is cheap (1.4\,ms per turn) and accurate (98.6--99.9\% of preferences caught,
+        almost no false entries). The 14 questions whose preference was missed are answered correctly only 36--50\% of the time at long context, so
+        the classifier is the part of the pipeline whose errors matter most.
+  \item \textbf{When retrieval is useful.} Retrieval over raw messages is the paper's mechanism, and the new encoder makes it much better. Once a
+        memory exists, retrieval is most useful \emph{over the memory}, as the proposal anticipated. This keeps the prompt short when users have many
+        preferences.
+  \item \textbf{Cost.} At question time the memory adds about \qTokAdd{} prompt tokens (\qTokZs{} $\rightarrow$ \qTokMem). Per turn, it costs one classifier
+        pass and one embedding, far cheaper than LLM-based memory writing.
+\end{itemize}
+
+%===============================================================================
+\section{Limitations}
+\begin{itemize}
+  \item \textbf{One benchmark with one preference per conversation.} Many-preference behaviour is approximated by a synthetic stress test (one model,
+        one length, other-topic preferences only).
+  \item \textbf{The classifier is in-distribution.} It was trained on PrefEval-style data from other topics. It catches only 16--26\% of casual
+        preferences in real chat (OpenAssistant), so memory recall in the wild would be lower.
+  \item \textbf{The strict 5-token metric} penalizes correct but badly formatted answers. It was kept for comparability with the paper.
+  \item \textbf{Single deterministic run per cell} (greedy decoding). Differences of 1--2 points between the proposed variants are not claimed as significant;
+        the gaps to the baselines (10--35 points) are far larger.
+  \item \textbf{Local setup.} Quantized 7--8B models instead of the paper's Bedrock models. The generation task, the implicit-persona form and
+        Mistral RAG-Gemma at 10k--23k were not run.
+\end{itemize}
+
+%===============================================================================
+\section{Conclusion and Future Work}
+A cheap trained classifier that writes preferences into a memory, restated before each question, solves most of PrefEval's long-context
+preference-following problem for open 7--8B models: \qMiMemTwentyThree\% at 23k tokens versus \qMiRagTwentyThree\% for the paper's best method, at
+almost no extra cost. A modern encoder fixes the paper's retrieval bottleneck, but once memory exists, retrieval is best applied over the memory
+rather than over raw messages. Future work: evaluate the generation task with a local or API judge; improve real-chat recall of the classifier
+with more diverse training data; handle preference updates and conflicts (newer statements overriding older ones); and test on genuinely
+multi-preference, multi-session conversations.
+
+\bibliographystyle{IEEEtran}
+\bibliography{ref}
+
+%===============================================================================
+\appendices
+\section{Platforms and Tools}
+Experiments ran on a local RTX~3060 workstation, with Ollama (local LLM serving), HuggingFace (models and datasets) and GitHub
+(version control). Claude Code (Anthropic) was used as an AI assistant for implementation and writing; the major prompts are listed
+in Appendix~B. Code and results: \url{https://github.com/krishnaj01/ML_Project_PrefEval}.
+
+\textbf{Key design decisions.} Local-only evaluation with Ollama; adding Mistral-7B and the long-context regime (Mixtral ruled out after a
+feasibility check); four classifiers with ensemble analysis and OpenAssistant data; the strict persona-label filter after a hand-labelled
+200-row audit; adding mxbai-embed-large to the encoder comparison; single-message retrieval units; memory entries stored with their context;
+the ``Known user preferences'' format; comparison on the full Phase~1 grid; and a multi-preference stress test instead of an oracle-memory bound.
+
+\section{Major Prompts Given to the LLM}
+Main instructions, lightly edited for spelling (routine follow-ups and status checks omitted).
+\begin{enumerate}
+  \item \emph{Setup.} ``This proposal is the SoP for my ML project based on the existing PrefEval paper. Use Ollama for running the model if
+        possible, and start from scratch with the environment. I have to run this with a local model, with proper logging, result storing and
+        final outputs to compare with the baseline for Phase~1. Tell me which tasks are possible without Amazon Bedrock. Give time estimates
+        and tmux commands for long-running tasks, save progressively with a resume option, and tell me when to push to GitHub.''
+  \item \emph{Second model.} ``Can we run the same full Phase~1 tiers for Mistral-7B-Instruct-v0.2? Give a proper feasibility analysis, and tell me
+        whether Mixtral-8x7B is possible given the system constraints.''
+  \item \emph{Phase 2.} ``Let's move on to Phase~2, where I have to train a small classifier. From the four base-model options, give proper
+        reasoning and trade-offs so that I can choose the best for our use case, and do real analysis of training and testing: loss curves,
+        accuracy, precision/recall, F1, confusion matrix.''
+  \item \emph{Audit.} ``When exactly should I put 1 and when 0 in the audit sample, and what if I am unsure? Why is this audit required?''
+  \item \emph{Phase 3 plan.} ``Let's plan first: start with the retrieval part, and also add mxbai-embed-large-v1 for comparison, so five
+        models in total; then we discuss prompt making and memory. Will embedding the text before the conversation create issues, since it is
+        not real-time? How did the paper do it with SimCSE?''
+  \item \emph{Memory design.} ``Store the context with each preference. The `Known user preferences' format works. How many preferences should go
+        in, since it depends on which preferences occur, where and when: include all, or do RAG over the memory? Should the evaluation be the full
+        Phase~1 comparison, or what does the proposal suggest?''
+  \item \emph{Final scope.} ``Keep the oracle memory out, but explain exactly what it means first. Include the multi-preference stress test.''
+\end{enumerate}
+
+\end{document}

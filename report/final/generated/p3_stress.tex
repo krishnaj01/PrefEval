@@ -1,0 +1,16 @@
+\begin{tabular}{lc|cc|cc}
+\toprule
+ & & \multicolumn{2}{c|}{Include all} & \multicolumn{2}{c}{Top-5 retrieval over memory} \\
+Form & $D$ & entries & accuracy & pref.\ kept (\%) & accuracy \\
+\midrule
+explicit & 0 & 1 & 96.5 & 100.0 & 96.5 \\
+ & 5 & 6 & \textbf{94.3} & 100.0 & 94.2 \\
+ & 10 & 11 & 92.8 & 99.1 & \textbf{93.8} \\
+ & 20 & 21 & 90.5 & 97.4 & \textbf{93.9} \\
+\midrule
+implicit-choice & 0 & 1 & 83.5 & 100.0 & 83.5 \\
+ & 5 & 6 & 77.1 & 100.0 & \textbf{78.0} \\
+ & 10 & 11 & 73.7 & 99.9 & \textbf{77.7} \\
+ & 20 & 21 & 71.1 & 98.5 & \textbf{77.0} \\
+\bottomrule
+\end{tabular}
