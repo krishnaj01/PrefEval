@@ -1,0 +1,13 @@
+\begin{tabular}{lll|c|cc|c}
+\toprule
+Model & Form & Length & Best baseline & Memory & Memory + RAG & Gain \\
+\midrule
+Llama-3-8B & explicit & 3k & 74.8 (RAG) & \textbf{96.5} & 92.9 & +21.6 \\
+Llama-3-8B & implicit-choice & 3k & 73.7 (RAG) & \textbf{83.5} & 75.4 & +9.8 \\
+Mistral-7B-v0.2 & explicit & 3k & 75.7 (RAG) & \textbf{94.9} & 94.4 & +19.2 \\
+Mistral-7B-v0.2 & explicit & 10k & 64.6 (RAG) & 93.7 & \textbf{94.1} & +29.1 \\
+Mistral-7B-v0.2 & explicit & 16k & 59.0 (RAG) & \textbf{92.4} & 90.6 & +33.4 \\
+Mistral-7B-v0.2 & explicit & 23k & 53.7 (RAG) & \textbf{88.6} & 87.5 & +34.9 \\
+Mistral-7B-v0.2 & implicit-choice & 3k & 64.0 (RAG) & \textbf{79.8} & 78.3 & +15.8 \\
+\bottomrule
+\end{tabular}

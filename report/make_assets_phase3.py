@@ -337,5 +337,16 @@ man = [json.loads(l) for l in open(os.path.join(RES, "run_manifest.jsonl"))]
 gpu_s = sum(m.get("elapsed_s", 0) for m in man if m.get("step") == "mcq_run" and m.get("event") == "end")
 macros["qGpuHours"] = f"{gpu_s / 3600:.0f}"
 
+# slide table: best Phase 1 baseline vs the proposed methods
+SHORT = {"zero-shot": "Zero-shot", "remind": "Reminder", "cot": "CoT", "selfcritic": "Self-Critic", "rag": "RAG"}
+rows = []
+for model, form, n in (("llama3-8b", "explicit", 8), ("llama3-8b", "implicit-choice", 8), ("mistral7b", "explicit", 8),
+                       ("mistral7b", "explicit", 28), ("mistral7b", "explicit", 48), ("mistral7b", "explicit", 68),
+                       ("mistral7b", "implicit-choice", 8)):
+    k, v = best_baseline(model, form, n)
+    m, mr = acc(model, form, "memory", n), acc(model, form, "memory_rag", n)
+    rows.append(f"{MODEL_LABEL[model]} & {form} & {TOK[n]} & {v:.1f} ({SHORT[k]}) & {fmt(m, m >= mr)} & {fmt(mr, mr > m)} & +{m - v:.1f}")
+tab("lll|c|cc|c", ["Model & Form & Length & Best baseline & Memory & Memory + RAG & Gain"], rows, "p3_slide_main.tex")
+
 write("p3_macros.tex", [f"\\newcommand{{\\{k}}}{{{v}}}" for k, v in macros.items()])
 print(json.dumps(macros, indent=1))
